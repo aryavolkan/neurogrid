@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
-    branches: [main, master]
+    branches: [main]
 
 jobs:
   test:
@@ -18,7 +18,7 @@ jobs:
 
       - name: Install Godot
         run: |
-          GODOT_VERSION="4.4.1"
+          GODOT_VERSION="4.5"
           wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
           unzip -q "Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
           sudo mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
@@ -26,15 +26,31 @@ jobs:
 
       - name: Import project
         run: |
-          # Godot needs to import resources before running scripts
-          timeout 30 godot --path . --headless --import || true
+          timeout 60 godot --path . --headless --import 2>&1 || true
+
+      - name: Validate GDScript (no parse errors)
+        run: |
+          # Import logs script errors — check for them
+          OUTPUT=$(timeout 60 godot --path . --headless --import 2>&1 || true)
+          if echo "$OUTPUT" | grep -q "SCRIPT ERROR"; then
+            echo "$OUTPUT" | grep "SCRIPT ERROR"
+            echo "::error::GDScript parse/compile errors found"
+            exit 1
+          fi
+          echo "All scripts valid"
 
       - name: Run tests
         run: |
-          godot --path . --headless -s tests/test_runner.gd 2>&1 | tee test_output.txt
-          # Check for failures in output
+          timeout 120 godot --path . --headless -s tests/test_runner.gd 2>&1 | tee test_output.txt
           if grep -q "FAIL" test_output.txt; then
             echo "::error::Tests failed"
+            grep "FAIL" test_output.txt
+            exit 1
+          fi
+          # Verify all suites ran
+          SUITES=$(grep -c "tests passed\|FAILED" test_output.txt || true)
+          if [ "$SUITES" -lt 8 ]; then
+            echo "::error::Expected 8 test suites, only $SUITES completed"
             exit 1
           fi
           echo "All tests passed"
