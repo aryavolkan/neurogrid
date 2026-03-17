@@ -1,0 +1,40 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Godot
+        run: |
+          GODOT_VERSION="4.4.1"
+          wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q "Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          sudo mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+          chmod +x /usr/local/bin/godot
+
+      - name: Import project
+        run: |
+          # Godot needs to import resources before running scripts
+          timeout 30 godot --path . --headless --import || true
+
+      - name: Run tests
+        run: |
+          godot --path . --headless -s tests/test_runner.gd 2>&1 | tee test_output.txt
+          # Check for failures in output
+          if grep -q "FAIL" test_output.txt; then
+            echo "::error::Tests failed"
+            exit 1
+          fi
+          echo "All tests passed"
