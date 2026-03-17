@@ -212,6 +212,8 @@ func _on_headless_tick(tick: int) -> void:
 		var species := sim.get_species_counts()
 		var food: float = sim.food_manager.get_total_food()
 		var famine: String = " FAMINE" if sim.food_manager.is_famine() else ""
+		var night: String = " NIGHT" if sim.ecology_system.is_night() else ""
+		famine += night
 		var pop: int = sim.get_creature_count()
 		_pop_at_tick.append({"tick": tick, "pop": pop})
 

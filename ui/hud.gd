@@ -89,8 +89,13 @@ func _process(delta: float) -> void:
 	var species := _sim.get_species_counts()
 	_species_label.text = "Species: %d" % species.size()
 
-	var pause_str := " [PAUSED]" if GameConfig.paused else ""
-	_info_label.text = "[Space] Pause  [/] Speed" + pause_str
+	var status_parts: Array = []
+	if GameConfig.paused:
+		status_parts.append("[PAUSED]")
+	if _sim.ecology_system and _sim.ecology_system.is_night():
+		status_parts.append("[NIGHT]")
+	var status_str: String = " ".join(status_parts)
+	_info_label.text = "[Space] Pause  [/] Speed  " + status_str
 
 
 func _on_population_changed(count: int) -> void:
