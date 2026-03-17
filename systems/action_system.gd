@@ -12,6 +12,7 @@ var pheromone_layer: PheromoneLayer
 var creatures: Dictionary = {}
 var fitness_tracker: FitnessTracker
 var logger: SimLogger
+var ecology_system: EcologySystem
 
 
 func _init(p_world: GridWorld, p_pheromone_layer: PheromoneLayer) -> void:
@@ -93,9 +94,12 @@ func _handle_eating(creature: Creature) -> void:
 	if not tile:
 		return
 
-	# Eat regular food
+	# Eat regular food (herbivore bonus from ecology)
 	if tile.food > 0.0:
-		var eat_amount := minf(tile.food, 5.0)
+		var eat_max: float = 5.0
+		if ecology_system:
+			eat_max += eat_max * ecology_system.get_herbivore_food_bonus(creature)
+		var eat_amount := minf(tile.food, eat_max)
 		var consumed := creature.body.eat_food(eat_amount)
 		tile.food -= consumed
 		if consumed > 0.0:
@@ -180,9 +184,22 @@ func _skill_bite(creature: Creature) -> void:
 			if target_id >= 0:
 				break
 	if target_id >= 0 and creatures.has(target_id):
-		creatures[target_id].body.take_damage(15.0)
+		var bite_damage: float = 15.0
+		# Territory attack bonus
+		if ecology_system:
+			bite_damage += ecology_system.get_territory_attack_bonus(creature)
+		# Territory defense reduction for target
+		var target_creature: Creature = creatures[target_id]
+		if ecology_system:
+			bite_damage *= (1.0 - ecology_system.get_territory_defense_bonus(target_creature))
+		target_creature.body.take_damage(bite_damage)
+		# Predator kill energy bonus
+		if not target_creature.body.is_alive() and ecology_system:
+			var kill_bonus := ecology_system.get_kill_energy_bonus(creature, target_creature)
+			if kill_bonus > 0.0:
+				creature.body.eat_food(kill_bonus)
 		if fitness_tracker:
-			fitness_tracker.record_damage_dealt(creature.creature_id, 15.0)
+			fitness_tracker.record_damage_dealt(creature.creature_id, bite_damage)
 		if logger:
 			logger.bites_hit += 1
 

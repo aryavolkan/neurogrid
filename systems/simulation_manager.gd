@@ -16,6 +16,7 @@ var reproduction_system: ReproductionSystem
 var spawner: CreatureSpawner
 var fitness_tracker: FitnessTracker
 var species_manager: SpeciesManager
+var ecology_system: EcologySystem
 var logger: SimLogger
 
 var creatures: Dictionary = {}  # creature_id -> Creature
@@ -63,11 +64,13 @@ func _init_systems() -> void:
 	logger = SimLogger.new()
 	fitness_tracker = FitnessTracker.new()
 	species_manager = SpeciesManager.new(_dynamic_config)
+	ecology_system = EcologySystem.new(world)
 
 	action_system = ActionSystem.new(world, pheromone_layer)
 	action_system.creatures = creatures
 	action_system.fitness_tracker = fitness_tracker
 	action_system.logger = logger
+	action_system.ecology_system = ecology_system
 
 	reproduction_system = ReproductionSystem.new(world)
 	reproduction_system.creatures = creatures
@@ -116,9 +119,10 @@ func _simulate_tick(delta: float) -> void:
 		body.age += 1
 		body.update_cooldowns(delta)
 
-		# Metabolism
+		# Metabolism (modified by day/night cycle)
 		var receptor_cost := creature.brain.get_receptor_energy_cost()
-		body.apply_metabolism(receptor_cost)
+		var meta_mult := ecology_system.get_metabolism_multiplier()
+		body.energy -= (GameConfig.BASE_METABOLISM * meta_mult) + receptor_cost
 
 	# 2. Sense → Think → Act
 	var offspring_queue: Array = []  # [{genome, parent_id, parent_pos}]
@@ -183,18 +187,21 @@ func _simulate_tick(delta: float) -> void:
 		else:
 			break
 
-	# 6. World updates
-	food_manager.update(delta)
+	# 6. Ecology updates (territory, migration, day/night)
+	ecology_system.update(_tick_count, creatures)
+
+	# 7. World updates (food manager uses hotspot from ecology)
+	food_manager.update(delta, ecology_system)
 	pheromone_layer.update(delta)
 
-	# 7. Generation boundary check
+	# 8. Generation boundary check
 	if _tick_count % GENERATION_INTERVAL == 0:
 		_end_generation()
 
-	# 8. End-of-tick logging
+	# 9. End-of-tick logging
 	logger.end_tick()
 
-	# 9. Visual refresh (skip in headless)
+	# 10. Visual refresh (skip in headless)
 	if DisplayServer.get_name() != "headless":
 		for creature_id in creatures:
 			creatures[creature_id].update_visual(delta)
@@ -211,8 +218,9 @@ func _kill_creature(creature_id: int) -> void:
 	# Log death cause
 	logger.record_death(creature_id, creature.body, creature.grid_pos)
 
-	# Compute and record fitness
+	# Compute and record fitness (including group bonus)
 	var fitness := fitness_tracker.compute_fitness(creature_id, creature.body.age)
+	fitness += ecology_system.get_group_fitness_bonus(creature, creatures)
 	creature.genome.fitness = fitness
 	species_manager.update_fitness(creature_id, fitness)
 
@@ -235,6 +243,7 @@ func _kill_creature(creature_id: int) -> void:
 	# Clean up tracking
 	species_manager.remove_creature(creature_id)
 	fitness_tracker.unregister(creature_id)
+	ecology_system.remove_creature(creature_id)
 
 	# Remove from scene
 	creature.died.emit(creature_id)

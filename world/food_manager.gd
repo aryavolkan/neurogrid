@@ -17,8 +17,8 @@ func _init(p_world: GridWorld) -> void:
 	world = p_world
 
 
-func update(_delta: float) -> void:
-	## Called each tick. Regenerates food with seasonal modifier and global cap.
+func update(_delta: float, ecology: EcologySystem = null) -> void:
+	## Called each tick. Regenerates food with seasonal modifier, global cap, and migration hotspot.
 	_season_tick += 1
 
 	# Seasonal modifier: sin wave from 0.3 (famine) to 1.5 (abundance)
@@ -40,6 +40,9 @@ func update(_delta: float) -> void:
 					var regen_rate: float = GameConfig.FOOD_REGEN_RATE * season_mod
 					if tile.terrain == GameConfig.Terrain.FOREST:
 						regen_rate *= 1.5
+					# Migration hotspot bonus
+					if ecology:
+						regen_rate += ecology.get_hotspot_food_bonus(pos)
 					var added := minf(regen_rate, MAX_GLOBAL_FOOD - _total_food)
 					tile.food = minf(tile.food + added, GameConfig.MAX_FOOD_PER_TILE)
 					_total_food += added
