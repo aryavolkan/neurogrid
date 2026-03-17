@@ -16,6 +16,7 @@ var reproduction_system: ReproductionSystem
 var spawner: CreatureSpawner
 var fitness_tracker: FitnessTracker
 var species_manager: SpeciesManager
+var logger: SimLogger
 
 var creatures: Dictionary = {}  # creature_id -> Creature
 var _tick_count: int = 0
@@ -59,12 +60,14 @@ func _init_world() -> void:
 
 
 func _init_systems() -> void:
+	logger = SimLogger.new()
 	fitness_tracker = FitnessTracker.new()
 	species_manager = SpeciesManager.new(_dynamic_config)
 
 	action_system = ActionSystem.new(world, pheromone_layer)
 	action_system.creatures = creatures
 	action_system.fitness_tracker = fitness_tracker
+	action_system.logger = logger
 
 	reproduction_system = ReproductionSystem.new(world)
 	reproduction_system.creatures = creatures
@@ -132,6 +135,7 @@ func _simulate_tick(delta: float) -> void:
 
 		# Reproduction check (mate_desire is output index 3)
 		if outputs.size() > 3 and outputs[3] > GameConfig.MATE_DESIRE_THRESHOLD:
+			logger.mate_attempts += 1
 			var child_genome := reproduction_system.try_reproduce(creature)
 			if child_genome:
 				var spawn_pos := world.find_empty_adjacent(creature.grid_pos)
@@ -141,6 +145,9 @@ func _simulate_tick(delta: float) -> void:
 						"pos": spawn_pos,
 						"parent_id": creature.creature_id,
 					})
+					logger.reproductions += 1
+			else:
+				logger.mate_no_partner += 1
 
 	# 3. Spawn offspring
 	for child_data in offspring_queue:
@@ -150,6 +157,12 @@ func _simulate_tick(delta: float) -> void:
 		if child:
 			_register_creature(child)
 			fitness_tracker.record_offspring(child_data.parent_id)
+			logger.births += 1
+			logger.total_offspring_by_id[child_data.parent_id] = logger.total_offspring_by_id.get(child_data.parent_id, 0) + 1
+			var count: int = logger.total_offspring_by_id[child_data.parent_id]
+			if count > logger.most_offspring_count:
+				logger.most_offspring_count = count
+				logger.most_offspring_id = child_data.parent_id
 
 	# 4. Check deaths
 	var dead_ids: Array = []
@@ -166,6 +179,7 @@ func _simulate_tick(delta: float) -> void:
 		var creature := spawner.spawn_random_creature()
 		if creature:
 			_register_creature(creature)
+			logger.spawns_random += 1
 		else:
 			break
 
@@ -177,10 +191,14 @@ func _simulate_tick(delta: float) -> void:
 	if _tick_count % GENERATION_INTERVAL == 0:
 		_end_generation()
 
-	# 8. Visual refresh
-	for creature_id in creatures:
-		creatures[creature_id].update_visual(delta)
-	world.queue_redraw()
+	# 8. End-of-tick logging
+	logger.end_tick()
+
+	# 9. Visual refresh (skip in headless)
+	if DisplayServer.get_name() != "headless":
+		for creature_id in creatures:
+			creatures[creature_id].update_visual(delta)
+		world.queue_redraw()
 
 	tick_complete.emit(_tick_count)
 
@@ -189,6 +207,9 @@ func _kill_creature(creature_id: int) -> void:
 	if not creatures.has(creature_id):
 		return
 	var creature: Creature = creatures[creature_id]
+
+	# Log death cause
+	logger.record_death(creature_id, creature.body)
 
 	# Compute and record fitness
 	var fitness := fitness_tracker.compute_fitness(creature_id, creature.body.age)
@@ -236,6 +257,7 @@ func _end_generation() -> void:
 		"best_fitness": _gen_best_fitness,
 		"avg_fitness": _gen_avg_fitness,
 		"deaths": _gen_death_count,
+		"log_report": logger.get_gen_report(),
 	}
 
 	# Update species stagnation and compatibility threshold
@@ -248,6 +270,7 @@ func _end_generation() -> void:
 	_gen_best_fitness = 0.0
 	_gen_fitness_sum = 0.0
 	_gen_death_count = 0
+	logger.reset_generation()
 
 	generation_complete.emit(_generation, stats)
 

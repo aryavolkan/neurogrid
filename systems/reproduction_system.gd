@@ -10,15 +10,24 @@ func _init(p_world: GridWorld) -> void:
 	world = p_world
 
 
+var _debug_log: bool = false
+
 func try_reproduce(creature: Creature) -> DynamicGenome:
 	## Attempt reproduction. Returns offspring genome or null.
 	var body := creature.body
 	if not body.can_reproduce():
+		if _debug_log:
+			print("  [repro] #%d can't reproduce: energy=%.1f threshold=%.1f cd=%.1f" % [
+				creature.creature_id, body.energy, GameConfig.REPRODUCTION_ENERGY_THRESHOLD, body.reproduction_cooldown])
 		return null
 
 	# Find a compatible mate nearby
 	var mate := _find_mate(creature)
 	if not mate:
+		if _debug_log:
+			var nearby := world.find_creatures_in_range(creature.grid_pos, 5)
+			print("  [repro] #%d (E=%.1f) no mate found. %d nearby creatures" % [
+				creature.creature_id, body.energy, nearby.size()])
 		return null
 
 	# Crossover
@@ -38,7 +47,7 @@ func try_reproduce(creature: Creature) -> DynamicGenome:
 
 func _find_mate(creature: Creature) -> Creature:
 	## Find nearest compatible creature within mating range.
-	var nearby := world.find_creatures_in_range(creature.grid_pos, 3)
+	var nearby := world.find_creatures_in_range(creature.grid_pos, 5)
 	var best_mate: Creature = null
 	var best_dist: int = 999
 
@@ -47,8 +56,13 @@ func _find_mate(creature: Creature) -> Creature:
 			continue
 		var candidate: Creature = creatures[info.id]
 		if not candidate.body.is_alive():
+			if _debug_log:
+				print("    [mate] #%d not alive" % info.id)
 			continue
 		if not candidate.body.can_reproduce():
+			if _debug_log:
+				print("    [mate] #%d can't reproduce (E=%.1f cd=%.1f)" % [
+					info.id, candidate.body.energy, candidate.body.reproduction_cooldown])
 			continue
 
 		# Compatibility check
@@ -57,5 +71,10 @@ func _find_mate(creature: Creature) -> Creature:
 			if info.dist < best_dist:
 				best_dist = info.dist
 				best_mate = candidate
+				if _debug_log:
+					print("    [mate] #%d compatible (dist=%.2f, range=%d)" % [info.id, compat, info.dist])
+		elif _debug_log:
+			print("    [mate] #%d incompatible (dist=%.2f > %.1f)" % [
+				info.id, compat, GameConfig.MATING_COMPATIBILITY_THRESHOLD])
 
 	return best_mate

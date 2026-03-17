@@ -11,6 +11,7 @@ var pheromone_layer: PheromoneLayer
 # creature_id -> Creature lookup (set by SimulationManager)
 var creatures: Dictionary = {}
 var fitness_tracker: FitnessTracker
+var logger: SimLogger
 
 
 func _init(p_world: GridWorld, p_pheromone_layer: PheromoneLayer) -> void:
@@ -71,6 +72,11 @@ func _handle_movement(creature: Creature, move_x: float, move_y: float) -> void:
 		world.move_creature(creature.creature_id, creature.grid_pos, new_pos)
 		creature.grid_pos = new_pos
 		creature.body.energy -= GameConfig.MOVEMENT_COST * cost_mult
+		if logger:
+			logger.moves += 1
+	elif new_pos != creature.grid_pos:
+		if logger:
+			logger.moves_blocked += 1
 
 
 func _handle_eating(creature: Creature) -> void:
@@ -87,14 +93,21 @@ func _handle_eating(creature: Creature) -> void:
 			world.mark_food_dirty()
 			if fitness_tracker:
 				fitness_tracker.record_food_eaten(creature.creature_id, consumed)
+			if logger:
+				logger.eats += 1
+				logger.food_consumed += consumed
 
 	# Eat corpse energy
 	if tile.corpse_energy > 0.0:
 		var eat_amount := minf(tile.corpse_energy, 3.0)
 		var consumed := creature.body.eat_food(eat_amount)
 		tile.corpse_energy -= consumed
-		if consumed > 0.0 and fitness_tracker:
-			fitness_tracker.record_food_eaten(creature.creature_id, consumed)
+		if consumed > 0.0:
+			if fitness_tracker:
+				fitness_tracker.record_food_eaten(creature.creature_id, consumed)
+			if logger:
+				logger.eats += 1
+				logger.corpse_consumed += consumed
 
 
 func _execute_skill(creature: Creature, skill_registry_id: int) -> void:
@@ -113,6 +126,8 @@ func _execute_skill(creature: Creature, skill_registry_id: int) -> void:
 	body.energy -= entry.energy_cost
 	var cd_ticks: int = int(entry.cooldown * GameConfig.TICKS_PER_SECOND)
 	body.set_skill_cooldown(skill_registry_id, cd_ticks)
+	if logger:
+		logger.record_skill(entry.name)
 
 	match skill_registry_id:
 		0:  # dash
@@ -159,6 +174,8 @@ func _skill_bite(creature: Creature) -> void:
 		creatures[target_id].body.take_damage(15.0)
 		if fitness_tracker:
 			fitness_tracker.record_damage_dealt(creature.creature_id, 15.0)
+		if logger:
+			logger.bites_hit += 1
 
 
 func _skill_poison_spit(creature: Creature) -> void:
@@ -166,6 +183,8 @@ func _skill_poison_spit(creature: Creature) -> void:
 	var nearest := world.find_nearest_creature(creature.grid_pos, 2, creature.creature_id)
 	if not nearest.is_empty() and creatures.has(nearest.id):
 		creatures[nearest.id].body.poisoned_ticks = 5
+		if logger:
+			logger.poisons_hit += 1
 
 
 func _skill_emit_pheromone(creature: Creature) -> void:

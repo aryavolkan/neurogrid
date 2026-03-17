@@ -8,31 +8,31 @@ const TILE_SIZE: int = 16  # Pixels per tile
 
 # Population
 const MAX_CREATURES: int = 300
-const MIN_CREATURES: int = 20
-const INITIAL_POPULATION: int = 50
+const MIN_CREATURES: int = 40
+const INITIAL_POPULATION: int = 80
 
 # Creature defaults
-const STARTING_ENERGY: float = 50.0
-const MAX_ENERGY: float = 100.0
+const STARTING_ENERGY: float = 80.0
+const MAX_ENERGY: float = 150.0
 const MAX_HEALTH: float = 30.0
-const MAX_AGE: int = 2000  # Ticks
+const MAX_AGE: int = 3000  # Ticks
 
 # Energy costs
-const BASE_METABOLISM: float = 0.5  # Per tick
-const MOVEMENT_COST: float = 0.2  # Per tile moved
-const REPRODUCTION_COST: float = 30.0
-const REPRODUCTION_ENERGY_THRESHOLD: float = 40.0
-const OFFSPRING_ENERGY: float = 20.0
+const BASE_METABOLISM: float = 0.15  # Per tick (was 0.5 — too harsh for random networks)
+const MOVEMENT_COST: float = 0.1  # Per tile moved
+const REPRODUCTION_COST: float = 10.0
+const REPRODUCTION_ENERGY_THRESHOLD: float = 35.0
+const OFFSPRING_ENERGY: float = 30.0
 
 # Reproduction
-const MATE_DESIRE_THRESHOLD: float = 0.5
-const REPRODUCTION_COOLDOWN: float = 30.0  # Seconds (converted to ticks at runtime)
-const MATING_COMPATIBILITY_THRESHOLD: float = 3.0
+const MATE_DESIRE_THRESHOLD: float = 0.3
+const REPRODUCTION_COOLDOWN: float = 10.0  # Seconds
+const MATING_COMPATIBILITY_THRESHOLD: float = 25.0  # Very loose — random genomes have dist ~10-18
 
 # Food
 const MAX_FOOD_PER_TILE: float = 20.0
-const FOOD_REGEN_RATE: float = 0.05  # Per tick
-const FOOD_SPAWN_DENSITY: float = 0.15  # Fraction of grass/forest tiles with food
+const FOOD_REGEN_RATE: float = 0.08  # Per tick
+const FOOD_SPAWN_DENSITY: float = 0.25  # Fraction of grass/forest tiles with food
 
 # Simulation
 const TICKS_PER_SECOND: int = 30

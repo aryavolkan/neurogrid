@@ -10,7 +10,7 @@ const SEASON_LENGTH: int = 1000  # Ticks per full cycle (abundance â†’ famine â†
 
 # Global food budget
 var _total_food: float = 0.0
-const MAX_GLOBAL_FOOD: float = 4000.0  # Cap on total food in world
+const MAX_GLOBAL_FOOD: float = 8000.0  # Cap on total food in world
 
 
 func _init(p_world: GridWorld) -> void:
