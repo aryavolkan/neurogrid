@@ -7,6 +7,9 @@ var _creature_species: Dictionary = {}  # creature_id -> species_id
 var _next_species_id: int = 1
 var _config: DynamicConfig
 
+# Speciation event log (Phase 12)
+var speciation_events: Array = []  # Array of {type, tick, species_id, ...}
+
 # Per-species tracking
 class SpeciesInfo:
 	var id: int
@@ -37,13 +40,14 @@ func assign_species(creature_id: int, genome: DynamicGenome) -> int:
 			_creature_species[creature_id] = species_id
 			return species_id
 
-	# New species
+	# New species — log speciation event
 	var new_id := _next_species_id
 	_next_species_id += 1
 	var info := SpeciesInfo.new(new_id, genome.copy())
 	info.member_ids.append(creature_id)
 	_species[new_id] = info
 	_creature_species[creature_id] = new_id
+	speciation_events.append({"type": "split", "species_id": new_id, "from_creature": creature_id})
 	return new_id
 
 
@@ -86,6 +90,7 @@ func end_generation() -> void:
 			to_remove.append(species_id)
 
 	for species_id in to_remove:
+		speciation_events.append({"type": "extinct", "species_id": species_id})
 		_species.erase(species_id)
 
 	# Adjust compatibility threshold toward target

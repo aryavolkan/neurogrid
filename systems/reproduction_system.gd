@@ -51,6 +51,8 @@ func _find_mate(creature: Creature) -> Creature:
 	var best_mate: Creature = null
 	var best_dist: int = 999
 
+	var best_score: float = -999.0
+
 	for info in nearby:
 		if not creatures.has(info.id):
 			continue
@@ -68,11 +70,16 @@ func _find_mate(creature: Creature) -> Creature:
 		# Compatibility check
 		var compat := creature.genome.compatibility(candidate.genome)
 		if compat < GameConfig.MATING_COMPATIBILITY_THRESHOLD:
-			if info.dist < best_dist:
-				best_dist = info.dist
+			# Sexual selection: score candidate by evolved mate preferences
+			var pref_score := AdvancedEvolution.compute_mate_preference(creature.genome, candidate.genome)
+			# Combine distance proximity and preference (closer + preferred = higher score)
+			var score: float = pref_score - float(info.dist) * 0.1
+			if score > best_score:
+				best_score = score
 				best_mate = candidate
 				if _debug_log:
-					print("    [mate] #%d compatible (dist=%.2f, range=%d)" % [info.id, compat, info.dist])
+					print("    [mate] #%d compatible (compat=%.2f, pref=%.2f, range=%d)" % [
+						info.id, compat, pref_score, info.dist])
 		elif _debug_log:
 			print("    [mate] #%d incompatible (dist=%.2f > %.1f)" % [
 				info.id, compat, GameConfig.MATING_COMPATIBILITY_THRESHOLD])

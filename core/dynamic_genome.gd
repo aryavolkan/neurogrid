@@ -44,6 +44,7 @@ class ConnectionGene:
 	var weight: float
 	var enabled: bool = true
 	var innovation: int
+	var learning_rate: float = 0.0  # Neuromodulation: Hebbian weight change rate
 
 	func _init(p_in: int, p_out: int, p_weight: float, p_innovation: int) -> void:
 		in_id = p_in
@@ -54,6 +55,7 @@ class ConnectionGene:
 	func copy() -> ConnectionGene:
 		var c := ConnectionGene.new(in_id, out_id, weight, innovation)
 		c.enabled = enabled
+		c.learning_rate = learning_rate
 		return c
 
 
@@ -65,6 +67,12 @@ var adjusted_fitness: float = 0.0
 var config: DynamicConfig
 var innovation_tracker  # NeatInnovation (connection innovations)
 var io_tracker: IoInnovation  # Receptor/skill innovations
+
+# Sexual selection: evolved mate preference weights (Phase 12)
+var mate_pref_complexity: float = 0.0  # Preference for genome complexity
+var mate_pref_skills: float = 0.0     # Preference for skill count
+var mate_pref_receptors: float = 0.0  # Preference for receptor count
+var mate_pref_fitness: float = 0.0    # Preference for high fitness
 
 
 static func create(p_config: DynamicConfig, p_conn_tracker, p_io_tracker: IoInnovation) -> DynamicGenome:
@@ -303,6 +311,10 @@ func mutate_weights() -> void:
 				conn.weight += _randn() * nc.weight_perturb_strength
 			else:
 				conn.weight = randf_range(-nc.weight_reset_range, nc.weight_reset_range)
+		# Neuromodulation: mutate learning rate (5% chance per connection)
+		if randf() < 0.05:
+			conn.learning_rate += _randn() * 0.01
+			conn.learning_rate = clampf(conn.learning_rate, -0.1, 0.1)
 
 
 func mutate_disable_connection() -> void:
@@ -332,6 +344,12 @@ func mutate() -> void:
 		mutate_remove_receptor()
 	if randf() < config.remove_skill_rate:
 		mutate_remove_skill()
+	# Sexual selection: mutate mate preferences (10% chance)
+	if randf() < 0.1:
+		mate_pref_complexity += _randn() * 0.2
+		mate_pref_skills += _randn() * 0.2
+		mate_pref_receptors += _randn() * 0.2
+		mate_pref_fitness += _randn() * 0.2
 
 
 # --- Compatibility ---
@@ -568,6 +586,10 @@ func copy() -> DynamicGenome:
 	g.connection_genes = connection_genes.map(func(c): return c.copy())
 	g.fitness = fitness
 	g.adjusted_fitness = adjusted_fitness
+	g.mate_pref_complexity = mate_pref_complexity
+	g.mate_pref_skills = mate_pref_skills
+	g.mate_pref_receptors = mate_pref_receptors
+	g.mate_pref_fitness = mate_pref_fitness
 	return g
 
 
@@ -628,8 +650,15 @@ func serialize() -> Dictionary:
 			"in": conn.in_id, "out": conn.out_id,
 			"weight": conn.weight, "enabled": conn.enabled,
 			"innovation": conn.innovation,
+			"learning_rate": conn.learning_rate,
 		})
-	return {"nodes": nodes, "connections": connections, "fitness": fitness}
+	return {
+		"nodes": nodes, "connections": connections, "fitness": fitness,
+		"mate_pref_complexity": mate_pref_complexity,
+		"mate_pref_skills": mate_pref_skills,
+		"mate_pref_receptors": mate_pref_receptors,
+		"mate_pref_fitness": mate_pref_fitness,
+	}
 
 
 static func deserialize(data: Dictionary, p_config: DynamicConfig, p_conn_tracker, p_io_tracker: IoInnovation) -> DynamicGenome:
@@ -653,7 +682,12 @@ static func deserialize(data: Dictionary, p_config: DynamicConfig, p_conn_tracke
 			float(cd.weight), int(cd.innovation),
 		)
 		conn.enabled = bool(cd.enabled)
+		conn.learning_rate = float(cd.get("learning_rate", 0.0))
 		genome.connection_genes.append(conn)
 
 	genome.fitness = float(data.get("fitness", 0.0))
+	genome.mate_pref_complexity = float(data.get("mate_pref_complexity", 0.0))
+	genome.mate_pref_skills = float(data.get("mate_pref_skills", 0.0))
+	genome.mate_pref_receptors = float(data.get("mate_pref_receptors", 0.0))
+	genome.mate_pref_fitness = float(data.get("mate_pref_fitness", 0.0))
 	return genome
