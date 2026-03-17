@@ -9,6 +9,7 @@ var grid_pos: Vector2i = Vector2i.ZERO
 var body: CreatureBody
 var brain: CreatureBrain
 var genome: DynamicGenome
+var last_action_summary: String = ""
 
 # Visual
 var base_color: Color = Color.WHITE

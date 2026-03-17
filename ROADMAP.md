@@ -50,17 +50,50 @@ Creatures spawn, sense, think (NEAT forward pass), act (move, eat, 8 skills), re
 
 ---
 
-## Remaining Work
+## In Progress
 
-### Phase 10: Polish & Advanced Features
+### Phase 10: Polish & Visualization (in progress)
 
 - [ ] **Genome viewer:** visual neural network graph — nodes colored by type, weighted edges
 - [ ] **Debug overlay:** show selected creature's sensory inputs, neural activations, action outputs
-- [ ] **Predator/prey dynamics:** carnivores gain energy from kills, herbivores gain food bonus
-- [ ] **Day/night cycles:** alternate visibility ranges, activity costs
-- [ ] **Natural disasters:** periodic events (flood, drought, plague) as selection bottlenecks
 - [ ] **Sandbox tools:** click to spawn/kill creatures, place/remove food and walls, drag creatures
-- [ ] **Performance:** spatial hashing for neighbor queries, off-screen culling, batch pheromone diffusion
 - [ ] **Heatmaps:** toggle overlays for food density, pheromone, creature density, death locations
-- [ ] **Simulation replay:** record tick-by-tick snapshots, scrub timeline
+- [ ] **Performance:** spatial hashing for neighbor queries, off-screen culling, batch pheromone diffusion
 - [ ] **In-game help:** tooltips, parameter descriptions, genome interpretation guide
+- [ ] Config presets (save/load GameConfig + DynamicConfig)
+
+---
+
+## Planned
+
+### Phase 11: Behavioral Ecology
+
+- [ ] **Predator/prey role specialization:** carnivores gain energy from kills, herbivores get food bonus — diet emerges from evolved receptor/skill loadouts
+- [ ] **Territorial behavior:** creatures that stay in an area accumulate defensive bonuses (reduced damage taken, increased bite damage within territory)
+- [ ] **Group behavior incentives:** allied creatures (same species) near each other receive a fitness bonus, encouraging flocking and cooperative strategies
+- [ ] **Nocturnal/diurnal cycles:** alternate activity costs and sensor ranges — some receptors become more effective at night, movement costs shift by time of day
+- [ ] **Migration patterns:** food spawn locations shift gradually over long time scales (thousands of ticks), rewarding creatures that track resource movement
+
+### Phase 12: Advanced Evolution
+
+- [ ] **Neuromodulation:** evolved learning rates attached to connections that modify weights during a creature's lifetime based on reward signals
+- [ ] **Sexual selection:** mate preference genes that bias partner choice beyond compatibility distance — creatures evolve aesthetic or behavioral criteria for mates
+- [ ] **Ontogeny:** genome expression changes with creature age — juvenile creatures have reduced skill access and lower metabolism, adults unlock full genome potential
+- [ ] **Coevolutionary arms races:** track and reward competitive interactions between species — predator species and prey species drive each other's evolution
+- [ ] **Speciation events tracking:** log when species split, merge, or go extinct with full lineage metadata for post-hoc analysis
+
+### Phase 13: World Complexity
+
+- [ ] **Multi-level terrain:** elevation values per tile affecting movement cost and visibility range (high ground = longer sensor range, valleys = shelter)
+- [ ] **Dynamic terrain:** erosion, flooding, and vegetation growth that change the map over generations — terrain is no longer static after world generation
+- [ ] **Resource types beyond food:** minerals for wall building (reduces build_wall energy cost), medicinal plants for healing (boosts heal_self effectiveness)
+- [ ] **Nesting sites:** protected tile locations where offspring have higher initial energy and reduced predation risk during early life
+- [ ] **Weather system:** rain boosts food regeneration, storms deal damage to exposed creatures, fog reduces all sensor ranges temporarily
+
+### Phase 14: Analysis & Tooling
+
+- [ ] **Phylogenetic tree visualization:** species lineage graph over generations showing branching, extinction, and dominance shifts
+- [ ] **Genome diff tool:** compare two creatures' genomes side by side — highlight matching innovations, unique receptors/skills, and structural differences
+- [ ] **Experiment runner:** batch headless runs with parameter sweeps across GameConfig/DynamicConfig values, automatic CSV export of per-generation statistics
+- [ ] **W&B integration:** connect via `shared-evolve-utils` for cloud-based experiment tracking — log fitness curves, species counts, genome complexity, and population metrics
+- [ ] **Replay system:** record tick-by-tick snapshots of full simulation state, scrub timeline forward/backward, export to video for presentations and analysis

@@ -6,9 +6,15 @@ var camera: CameraController
 var hud: HUD
 var inspector: CreatureInspector
 var stats_panel: StatsPanel
+var genome_viewer: GenomeViewer
+var debug_overlay: DebugOverlay
+var heatmap_overlay: HeatmapOverlay
 
 var _headless: bool = false
 var _headless_max_ticks: int = 5000
+
+# Sandbox mode
+var _food_place_mode: bool = false
 
 # Headless tracking
 var _energy_snapshots: Array = []  # Array of {tick, min, max, avg}
@@ -69,8 +75,26 @@ func _ready() -> void:
 	stats_panel.setup(sim)
 	add_child(stats_panel)
 
+	# Genome viewer (G to toggle)
+	genome_viewer = GenomeViewer.new()
+	genome_viewer.setup(sim, inspector)
+	add_child(genome_viewer)
+
+	# Debug overlay (F3 to toggle)
+	debug_overlay = DebugOverlay.new()
+	debug_overlay.setup(sim, inspector)
+	add_child(debug_overlay)
+
+	# Heatmap overlay (H to toggle)
+	heatmap_overlay = HeatmapOverlay.new()
+	heatmap_overlay.setup(sim)
+	add_child(heatmap_overlay)
+
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _headless:
+		return
+
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
 			KEY_F5:
@@ -79,6 +103,66 @@ func _unhandled_input(event: InputEvent) -> void:
 				SaveSystem.load_simulation(sim)
 			KEY_F6:
 				SaveSystem.export_best_genomes(sim)
+			KEY_F:
+				_food_place_mode = not _food_place_mode
+				if hud:
+					print("Food placement mode: %s" % ("ON" if _food_place_mode else "OFF"))
+			KEY_DELETE:
+				_sandbox_kill_selected()
+
+	# Mouse input for sandbox tools
+	if event is InputEventMouseButton and event.pressed:
+		var tile_pos := _screen_to_tile(event.global_position)
+		if tile_pos.x < 0:
+			return
+
+		if event.button_index == MOUSE_BUTTON_RIGHT:
+			if event.shift_pressed:
+				_sandbox_spawn_creature(tile_pos)
+			else:
+				_sandbox_place_food(tile_pos)
+		elif event.button_index == MOUSE_BUTTON_LEFT and _food_place_mode:
+			_sandbox_place_food(tile_pos)
+
+
+func _screen_to_tile(screen_pos: Vector2) -> Vector2i:
+	var cam := get_viewport().get_camera_2d()
+	if not cam:
+		return Vector2i(-1, -1)
+	var viewport_size := get_viewport().get_visible_rect().size
+	var world_pos := cam.position + (screen_pos - viewport_size * 0.5) / cam.zoom
+	var tile_pos := Vector2i(int(world_pos.x) / GameConfig.TILE_SIZE, int(world_pos.y) / GameConfig.TILE_SIZE)
+	if sim.world.is_valid(tile_pos):
+		return tile_pos
+	return Vector2i(-1, -1)
+
+
+func _sandbox_place_food(tile_pos: Vector2i) -> void:
+	var tile: GridTile = sim.world.get_tile(tile_pos)
+	if tile:
+		tile.food = minf(tile.food + 10.0, GameConfig.MAX_FOOD_PER_TILE)
+		sim.world.mark_food_dirty()
+
+
+func _sandbox_spawn_creature(tile_pos: Vector2i) -> void:
+	if sim.creatures.size() >= GameConfig.MAX_CREATURES:
+		return
+	if not sim.world.is_passable(tile_pos):
+		return
+	var genome := DynamicGenome.create(sim._dynamic_config, sim._conn_tracker, sim._io_tracker)
+	var creature := sim.spawner.spawn_creature(genome, tile_pos, GameConfig.STARTING_ENERGY)
+	if creature:
+		sim._register_creature(creature)
+
+
+func _sandbox_kill_selected() -> void:
+	if not inspector:
+		return
+	var cid: int = inspector._selected_creature_id
+	if cid >= 0 and sim.creatures.has(cid):
+		sim._kill_creature(cid)
+		inspector._selected_creature_id = -1
+		inspector._panel.visible = false
 
 
 # --- Headless logging ---

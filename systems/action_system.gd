@@ -26,13 +26,17 @@ func execute(creature: Creature, outputs: PackedFloat32Array) -> void:
 		return
 
 	var body := creature.body
+	var actions: PackedStringArray = []
 
 	# Movement
 	_handle_movement(creature, outputs[0], outputs[1])
+	if absf(outputs[0]) > 0.2 or absf(outputs[1]) > 0.2:
+		actions.append("moving")
 
 	# Eating
 	if outputs[2] > EAT_DESIRE_THRESHOLD:
 		_handle_eating(creature)
+		actions.append("eating")
 
 	# Skills (after core outputs)
 	var skill_nodes := creature.brain.get_skill_nodes()
@@ -40,6 +44,11 @@ func execute(creature: Creature, outputs: PackedFloat32Array) -> void:
 		var output_idx: int = GameConfig.CORE_OUTPUT_COUNT + i
 		if output_idx < outputs.size() and outputs[output_idx] > SKILL_ACTIVATION_THRESHOLD:
 			_execute_skill(creature, skill_nodes[i].registry_id)
+			var entry = Registries.skill_registry.get_entry(skill_nodes[i].registry_id)
+			if entry:
+				actions.append(entry.name)
+
+	creature.last_action_summary = ", ".join(actions) if not actions.is_empty() else "idle"
 
 
 func _handle_movement(creature: Creature, move_x: float, move_y: float) -> void:

@@ -9,6 +9,10 @@ var height: int
 # Spatial index: maps grid cell -> creature_id for fast neighbor queries
 var _creature_positions: Dictionary = {}  # Vector2i -> int (creature_id)
 
+# Spatial hash for fast neighbor queries (8x8 cells, each covering SPATIAL_CELL_SIZE tiles)
+const SPATIAL_CELL_SIZE: int = 8
+var _spatial_hash: Dictionary = {}  # Vector2i(cell) -> Dictionary{creature_id: Vector2i(pos)}
+
 # Food positions for fast nearest-food queries
 var _food_positions: Array = []  # Array[Vector2i]
 var _food_dirty: bool = true
@@ -41,14 +45,39 @@ func is_passable(pos: Vector2i) -> bool:
 	return tile != null and tile.is_passable() and not tile.is_occupied()
 
 
+# --- Spatial hash helpers ---
+
+func _pos_to_cell(pos: Vector2i) -> Vector2i:
+	return Vector2i(pos.x / SPATIAL_CELL_SIZE, pos.y / SPATIAL_CELL_SIZE)
+
+
+func _spatial_add(creature_id: int, pos: Vector2i) -> void:
+	var cell := _pos_to_cell(pos)
+	if not _spatial_hash.has(cell):
+		_spatial_hash[cell] = {}
+	_spatial_hash[cell][creature_id] = pos
+
+
+func _spatial_remove(creature_id: int, pos: Vector2i) -> void:
+	var cell := _pos_to_cell(pos)
+	if _spatial_hash.has(cell):
+		_spatial_hash[cell].erase(creature_id)
+		if _spatial_hash[cell].is_empty():
+			_spatial_hash.erase(cell)
+
+
 # --- Creature position tracking ---
 
 func set_creature_position(creature_id: int, pos: Vector2i) -> void:
 	_creature_positions[pos] = creature_id
+	_spatial_add(creature_id, pos)
 
 
 func clear_creature_position(pos: Vector2i) -> void:
+	var cid: int = _creature_positions.get(pos, -1)
 	_creature_positions.erase(pos)
+	if cid >= 0:
+		_spatial_remove(cid, pos)
 
 
 func get_creature_at(pos: Vector2i) -> int:
@@ -58,6 +87,8 @@ func get_creature_at(pos: Vector2i) -> int:
 func move_creature(creature_id: int, from: Vector2i, to: Vector2i) -> void:
 	_creature_positions.erase(from)
 	_creature_positions[to] = creature_id
+	_spatial_remove(creature_id, from)
+	_spatial_add(creature_id, to)
 	var old_tile: GridTile = tiles.get(from)
 	if old_tile:
 		old_tile.occupant_id = -1
@@ -96,13 +127,29 @@ func find_nearest_food(from: Vector2i, max_range: int) -> Vector2i:
 
 # --- Spatial queries ---
 
+func _get_nearby_cells(from: Vector2i, max_range: int) -> Array:
+	## Returns array of spatial hash cell coordinates that could contain creatures within max_range.
+	var center_cell := _pos_to_cell(from)
+	var cell_range: int = ceili(float(max_range) / float(SPATIAL_CELL_SIZE)) + 1
+	var cells: Array = []
+	for cx in range(center_cell.x - cell_range, center_cell.x + cell_range + 1):
+		for cy in range(center_cell.y - cell_range, center_cell.y + cell_range + 1):
+			var cell := Vector2i(cx, cy)
+			if _spatial_hash.has(cell):
+				cells.append(cell)
+	return cells
+
+
 func find_creatures_in_range(from: Vector2i, max_range: int) -> Array:
 	## Returns Array of {id: int, pos: Vector2i, dist: int}
 	var results: Array = []
-	for pos in _creature_positions:
-		var dist: int = abs(pos.x - from.x) + abs(pos.y - from.y)
-		if dist <= max_range and dist > 0:
-			results.append({"id": _creature_positions[pos], "pos": pos, "dist": dist})
+	for cell in _get_nearby_cells(from, max_range):
+		var bucket: Dictionary = _spatial_hash[cell]
+		for cid in bucket:
+			var pos: Vector2i = bucket[cid]
+			var dist: int = abs(pos.x - from.x) + abs(pos.y - from.y)
+			if dist <= max_range and dist > 0:
+				results.append({"id": cid, "pos": pos, "dist": dist})
 	return results
 
 
@@ -110,16 +157,18 @@ func find_nearest_creature(from: Vector2i, max_range: int, exclude_id: int = -1)
 	## Returns {id, pos, dist} or empty dict if none found.
 	var best := {}
 	var best_dist := max_range + 1
-	for pos in _creature_positions:
-		if pos == from:
-			continue
-		var cid: int = _creature_positions[pos]
-		if cid == exclude_id:
-			continue
-		var dist: int = abs(pos.x - from.x) + abs(pos.y - from.y)
-		if dist <= max_range and dist < best_dist:
-			best_dist = dist
-			best = {"id": cid, "pos": pos, "dist": dist}
+	for cell in _get_nearby_cells(from, max_range):
+		var bucket: Dictionary = _spatial_hash[cell]
+		for cid in bucket:
+			var pos: Vector2i = bucket[cid]
+			if pos == from:
+				continue
+			if cid == exclude_id:
+				continue
+			var dist: int = abs(pos.x - from.x) + abs(pos.y - from.y)
+			if dist <= max_range and dist < best_dist:
+				best_dist = dist
+				best = {"id": cid, "pos": pos, "dist": dist}
 	return best
 
 

@@ -209,7 +209,7 @@ func _kill_creature(creature_id: int) -> void:
 	var creature: Creature = creatures[creature_id]
 
 	# Log death cause
-	logger.record_death(creature_id, creature.body)
+	logger.record_death(creature_id, creature.body, creature.grid_pos)
 
 	# Compute and record fitness
 	var fitness := fitness_tracker.compute_fitness(creature_id, creature.body.age)

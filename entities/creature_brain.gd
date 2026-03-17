@@ -6,6 +6,10 @@ var network: DynamicNetwork
 var genome: DynamicGenome
 var sensor: CreatureSensor
 
+# Cached last think() values for debug overlay
+var last_inputs: PackedFloat32Array
+var last_outputs: PackedFloat32Array
+
 
 func _init(p_genome: DynamicGenome, p_sensor: CreatureSensor) -> void:
 	genome = p_genome
@@ -27,7 +31,10 @@ func think(pos: Vector2i, body: CreatureBody, creature_id: int) -> PackedFloat32
 		var val: float = sensor.get_receptor_value(receptor_info.registry_id, pos, body, creature_id)
 		inputs.append(val)
 
-	return network.forward(inputs)
+	last_inputs = inputs.duplicate()
+	var result := network.forward(inputs)
+	last_outputs = result.duplicate()
+	return result
 
 
 func get_receptor_energy_cost() -> float:

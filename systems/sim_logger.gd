@@ -36,6 +36,9 @@ var gen_spawns_random: int = 0
 var gen_bites: int = 0
 var gen_poisons: int = 0
 
+# Death location tracking (for heatmaps)
+var death_locations: Array = []  # Array[Vector2i]
+
 # Lifetime stats
 var total_births: int = 0
 var total_deaths: int = 0
@@ -120,7 +123,7 @@ func reset_generation() -> void:
 	gen_poisons = 0
 
 
-func record_death(creature_id: int, body: CreatureBody) -> void:
+func record_death(creature_id: int, body: CreatureBody, death_pos: Vector2i = Vector2i(-1, -1)) -> void:
 	deaths += 1
 	if body.energy <= 0.0:
 		deaths_energy += 1
@@ -130,6 +133,9 @@ func record_death(creature_id: int, body: CreatureBody) -> void:
 		deaths_age += 1
 	else:
 		deaths_energy += 1  # Fallback
+
+	if death_pos.x >= 0:
+		death_locations.append(death_pos)
 
 	if body.age > longest_lived_age:
 		longest_lived_age = body.age
