@@ -11,9 +11,16 @@ NeuroGrid is a 2D grid sandbox (Godot 4.5+, GDScript) where NEAT agents evolve d
 ```bash
 godot --path . --editor   # Open in editor
 godot --path .            # Run directly
+godot --path . --headless # Run headless (auto-detects, prints stats, 16x speed)
 ```
 
-No test framework is integrated yet. evolve-core has Python tests in its own CI.
+## Running Tests
+
+```bash
+godot --path . --headless -s tests/test_runner.gd
+```
+
+8 test suites, 147 tests covering genome, network, world, creature body, fitness, species, action system, and integration.
 
 ## Architecture
 
@@ -21,7 +28,7 @@ No test framework is integrated yet. evolve-core has Python tests in its own CI.
 
 Standard NEAT has fixed inputs/outputs. NeuroGrid extends this with two new node types:
 - **type 3 = receptor** — evolved sensory input, drawn from `ReceptorRegistry` (8 available: food/enemy/ally/pheromone/terrain sensing)
-- **type 4 = skill** — evolved action output, drawn from `SkillRegistry` (7 available: dash/bite/poison/pheromone/share_food/build_wall/heal)
+- **type 4 = skill** — evolved action output, drawn from `SkillRegistry` (8 available: dash/bite/poison/pheromone/share_food/build_wall/heal/burrow)
 
 Each receptor/skill gets an `io_innovation` number (via `IoInnovation` tracker) so crossover can align them across genomes, exactly like connection gene innovations in standard NEAT.
 
@@ -79,7 +86,7 @@ Key classes used by NeuroGrid:
 - `GridWorld`: 64×64 grid, 16px/tile. Manages spatial indices (`_creature_positions`, `_food_positions`) and provides `find_nearest_food()`, `find_nearest_creature()`, `find_creatures_in_range()`.
 - `GridTile`: terrain (grass/forest/water/rock/sand), food, pheromone, wall, occupant_id, corpse_energy.
 - `WorldGenerator`: Simplex noise → elevation/moisture → terrain type. Initial food on grass/forest.
-- `FoodManager`: food regen (1.5× in forest), corpse energy decay.
+- `FoodManager`: food regen (1.5× in forest), corpse energy decay, global food budget (8000 cap), seasonal sin-wave scarcity cycles (1000-tick period).
 - `PheromoneLayer`: deposit/decay/diffusion per tick.
 
 ### Entities
@@ -92,12 +99,13 @@ Key classes used by NeuroGrid:
 
 ### Systems
 
-- `SimulationManager` (Node2D): main tick loop — sense → think → act → spawn offspring → kill dead → maintain population → update world → refresh visuals. Owns all creatures, world, and sub-systems.
-- `ActionSystem` (RefCounted): interprets neural network outputs — discretizes movement (with terrain cost modifiers), handles eating (food + corpse), executes all 8 skills (dash, bite, poison_spit, emit_pheromone, share_food, build_wall, heal_self, burrow) with cooldown/energy enforcement. Grid boundary clamping.
-- `ReproductionSystem` (RefCounted): finds compatible mates within range 3, performs `DynamicGenome.crossover()` + `mutate()`, handles energy costs and cooldowns.
+- `SimulationManager` (Node2D): main tick loop — sense → think → act → spawn offspring → kill dead → maintain population → update world → refresh visuals. Owns all creatures, world, and sub-systems. Generation boundaries every 500 ticks. Skips visual refresh in headless mode.
+- `ActionSystem` (RefCounted): interprets neural network outputs — discretizes movement (with terrain cost modifiers), handles eating (food + corpse), executes all 8 skills (dash, bite, poison_spit, emit_pheromone, share_food, build_wall, heal_self, burrow) with cooldown/energy enforcement. Grid boundary clamping. Logs events to `SimLogger`.
+- `ReproductionSystem` (RefCounted): finds compatible mates within range 5, performs `DynamicGenome.crossover()` + `mutate()`, handles energy costs and cooldowns. Debug logging via `_debug_log` flag.
 - `CreatureSpawner` (RefCounted): factory for creatures with random or provided genomes, finds empty passable tiles, registers in spatial index.
 - `FitnessTracker` (RefCounted): per-creature lifetime metrics (energy gathered, food eaten, offspring, damage dealt). Computes scalar fitness and multi-objective `Vector3(survival, foraging, reproduction)` on death.
 - `SpeciesManager` (RefCounted): assigns creatures to species by genome compatibility, tracks per-species fitness/stagnation, adjusts compatibility threshold toward target species count.
+- `SimLogger` (RefCounted): per-tick and per-generation event counters (moves, eats, skills fired by name, bites, poisons, births, deaths by cause, random spawns). Lifetime stats (longest lived, most prolific parent).
 - `SaveSystem` (RefCounted): save/load full simulation state (world + genomes) to JSON. Export best genomes per species. Keys: F5 save, F9 load, F6 export.
 
 ### UI
@@ -123,14 +131,21 @@ evolve-core removed its `class_name` declarations to avoid conflicts. `core/neat
 - Signal-based communication between systems
 - Follow evolve-core interfaces (`IAgent`, `ISensor`, `IReward`)
 
-## Running Tests
+## Economy Balance (tuned via headless observation)
 
-```bash
-godot --path . --headless -s tests/test_runner.gd
-```
+Key parameters in `GameConfig` — these were data-driven from 5000-tick headless runs:
+- Metabolism 0.15/tick, movement 0.1/tile — creatures survive ~500 ticks without food
+- Reproduction threshold 35 energy, cost 10 — achievable once creatures find food
+- Mating compatibility 25.0 — loose enough for random genomes (which have dist ~10-18)
+- Mating range 5 tiles — with 40 creatures on 64×64 grid, encounters are possible
+- Food budget 8000 globally, 0.08 regen/tick, 25% initial spawn density
 
 ## Current State
 
 Full simulation loop with evolution: creatures spawn, sense, think, act (move, eat, 8 skills including burrow), reproduce with genome crossover, and die with fitness tracking. Species are managed with compatibility-based speciation and stagnation detection. Food has seasonal scarcity cycles. Save/load via F5/F9. Stats panel via Tab.
+
+Headless mode auto-detects and prints exhaustive per-generation reports (deaths by cause, births, food consumed, skills fired, species breakdown).
+
+Verified via 5000-tick headless runs: reproduction working (98 births/run), fitness climbing across generations (0→14), multi-member species emerging, genome complexity growing (hidden nodes, receptors, skills appearing).
 
 See `ROADMAP.md` for remaining work (Phase 10: polish, advanced features).
