@@ -42,19 +42,19 @@ func record_damage_dealt(creature_id: int, amount: float) -> void:
 
 func compute_fitness(creature_id: int, age: int) -> float:
 	## Compute scalar fitness for a creature (typically called on death).
-	var survival := float(age) / float(GameConfig.MAX_AGE) * W_SURVIVAL
-	var energy := _energy_gathered.get(creature_id, 0.0) / GameConfig.MAX_ENERGY * W_ENERGY
-	var offspring := float(_offspring_count.get(creature_id, 0)) * W_OFFSPRING
-	var food := _food_eaten.get(creature_id, 0.0) / 100.0 * W_FOOD
-	var damage := _damage_dealt.get(creature_id, 0.0) / 100.0 * W_DAMAGE
+	var survival: float = float(age) / float(GameConfig.MAX_AGE) * W_SURVIVAL
+	var energy: float = float(_energy_gathered.get(creature_id, 0.0)) / GameConfig.MAX_ENERGY * W_ENERGY
+	var offspring: float = float(_offspring_count.get(creature_id, 0)) * W_OFFSPRING
+	var food: float = float(_food_eaten.get(creature_id, 0.0)) / 100.0 * W_FOOD
+	var damage: float = float(_damage_dealt.get(creature_id, 0.0)) / 100.0 * W_DAMAGE
 	return survival + energy + offspring + food + damage
 
 
 func compute_objectives(creature_id: int, age: int) -> Vector3:
 	## Multi-objective fitness: (survival, foraging, reproduction)
-	var survival := float(age) / float(GameConfig.MAX_AGE)
-	var foraging := _food_eaten.get(creature_id, 0.0) / 100.0
-	var reproduction := float(_offspring_count.get(creature_id, 0))
+	var survival: float = float(age) / float(GameConfig.MAX_AGE)
+	var foraging: float = float(_food_eaten.get(creature_id, 0.0)) / 100.0
+	var reproduction: float = float(_offspring_count.get(creature_id, 0))
 	return Vector3(survival, foraging, reproduction)
 
 

@@ -126,8 +126,8 @@ func find_nearest_creature(from: Vector2i, max_range: int, exclude_id: int = -1)
 func get_adjacent_positions(pos: Vector2i) -> Array:
 	## Returns 4-connected neighbors that are valid.
 	var neighbors: Array = []
-	for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-		var np := pos + offset
+	for offset: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var np: Vector2i = pos + offset
 		if is_valid(np):
 			neighbors.append(np)
 	return neighbors

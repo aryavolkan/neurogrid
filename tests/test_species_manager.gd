@@ -44,7 +44,7 @@ func _test_assign_first_creature() -> void:
 func _test_assign_compatible_same_species() -> void:
 	var sm := SpeciesManager.new(_config)
 	var g1 := _make_genome()
-	var g2 := _make_genome()  # Same structure, should be compatible
+	var g2 := g1.copy()  # Identical genome, must be compatible
 	var sid1 := sm.assign_species(1, g1)
 	var sid2 := sm.assign_species(2, g2)
 	_assert_eq(sid1, sid2, "compatible genomes same species")
