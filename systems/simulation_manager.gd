@@ -18,6 +18,7 @@ var fitness_tracker: FitnessTracker
 var species_manager: SpeciesManager
 var ecology_system: EcologySystem
 var advanced_evolution: AdvancedEvolution
+var weather_system: WeatherSystem
 var logger: SimLogger
 
 var creatures: Dictionary = {}  # creature_id -> Creature
@@ -59,6 +60,7 @@ func _init_world() -> void:
 
 	food_manager = FoodManager.new(world)
 	pheromone_layer = PheromoneLayer.new(world)
+	weather_system = WeatherSystem.new(world)
 
 
 func _init_systems() -> void:
@@ -171,7 +173,12 @@ func _simulate_tick(delta: float) -> void:
 	for child_data in offspring_queue:
 		if creatures.size() >= GameConfig.MAX_CREATURES:
 			break
-		var child := spawner.spawn_creature(child_data.genome, child_data.pos, GameConfig.OFFSPRING_ENERGY)
+		# Nesting site bonus: offspring get extra energy if born on a nest
+		var spawn_energy: float = GameConfig.OFFSPRING_ENERGY
+		var spawn_tile: GridTile = world.get_tile(child_data.pos)
+		if spawn_tile and spawn_tile.is_nest:
+			spawn_energy *= 1.5  # 50% bonus energy at nesting sites
+		var child := spawner.spawn_creature(child_data.genome, child_data.pos, spawn_energy)
 		if child:
 			_register_creature(child)
 			fitness_tracker.record_offspring(child_data.parent_id)
@@ -204,18 +211,32 @@ func _simulate_tick(delta: float) -> void:
 	# 6. Ecology updates (territory, migration, day/night)
 	ecology_system.update(_tick_count, creatures)
 
-	# 7. World updates (food manager uses hotspot from ecology)
-	food_manager.update(delta, ecology_system)
+	# 7. Weather and dynamic terrain
+	weather_system.update(_tick_count)
+	# Storm damage to exposed (non-burrowed, non-forest) creatures
+	if weather_system.is_storm():
+		var storm_dmg: float = weather_system.get_storm_damage()
+		for cid in creatures:
+			var c: Creature = creatures[cid]
+			if c.body.burrowed:
+				continue
+			var tile: GridTile = world.get_tile(c.grid_pos)
+			if tile and tile.terrain == GameConfig.Terrain.FOREST:
+				continue  # Forest provides shelter from storms
+			c.body.take_damage(storm_dmg)
+
+	# 8. World updates (food manager uses hotspot + weather)
+	food_manager.update(delta, ecology_system, weather_system)
 	pheromone_layer.update(delta)
 
-	# 8. Generation boundary check
+	# 9. Generation boundary check
 	if _tick_count % GENERATION_INTERVAL == 0:
 		_end_generation()
 
-	# 9. End-of-tick logging
+	# 10. End-of-tick logging
 	logger.end_tick()
 
-	# 10. Visual refresh (skip in headless)
+	# 11. Visual refresh (skip in headless)
 	if DisplayServer.get_name() != "headless":
 		for creature_id in creatures:
 			creatures[creature_id].update_visual(delta)

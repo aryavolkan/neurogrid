@@ -75,11 +75,13 @@ func _handle_movement(creature: Creature, move_x: float, move_y: float) -> void:
 	new_pos.y = clampi(new_pos.y, 0, world.height - 1)
 
 	if new_pos != creature.grid_pos and world.is_passable(new_pos):
-		# Terrain movement cost modifier
+		# Terrain + elevation movement cost modifier
 		var tile: GridTile = world.get_tile(new_pos)
 		var cost_mult := 1.0
-		if tile and tile.terrain == GameConfig.Terrain.SAND:
-			cost_mult = 1.5  # Sand is slower
+		if tile:
+			if tile.terrain == GameConfig.Terrain.SAND:
+				cost_mult = 1.5
+			cost_mult *= tile.get_elevation_movement_cost()
 		world.move_creature(creature.creature_id, creature.grid_pos, new_pos)
 		creature.grid_pos = new_pos
 		creature.body.energy -= GameConfig.MOVEMENT_COST * cost_mult
@@ -136,8 +138,19 @@ func _execute_skill(creature: Creature, skill_registry_id: int) -> void:
 	if body.energy < entry.energy_cost:
 		return
 
-	# Pay energy cost and set cooldown
-	body.energy -= entry.energy_cost
+	# Pay energy cost (reduced by tile resources for applicable skills)
+	var skill_cost: float = entry.energy_cost
+	var tile: GridTile = world.get_tile(creature.grid_pos)
+	if tile:
+		# Minerals reduce build_wall cost
+		if skill_registry_id == 5 and tile.minerals > 0.0:
+			skill_cost *= 0.5
+			tile.minerals = maxf(tile.minerals - 1.0, 0.0)
+		# Medicinal plants boost heal_self (reduce cost, increase effect handled below)
+		if skill_registry_id == 6 and tile.medicinal > 0.0:
+			skill_cost *= 0.5
+			tile.medicinal = maxf(tile.medicinal - 1.0, 0.0)
+	body.energy -= skill_cost
 	var cd_ticks: int = int(entry.cooldown * GameConfig.TICKS_PER_SECOND)
 	body.set_skill_cooldown(skill_registry_id, cd_ticks)
 	if logger:
@@ -242,7 +255,12 @@ func _skill_build_wall(creature: Creature) -> void:
 
 
 func _skill_heal_self(creature: Creature) -> void:
-	creature.body.health = minf(creature.body.health + 10.0, GameConfig.MAX_HEALTH)
+	var heal_amount: float = 10.0
+	# Medicinal plants on tile boost healing
+	var heal_tile: GridTile = world.get_tile(creature.grid_pos)
+	if heal_tile and heal_tile.medicinal > 0.0:
+		heal_amount *= 1.5  # 50% bonus from medicinal plants
+	creature.body.health = minf(creature.body.health + heal_amount, GameConfig.MAX_HEALTH)
 
 
 func _skill_burrow(creature: Creature) -> void:
