@@ -102,6 +102,10 @@ func forward(inputs: PackedFloat32Array) -> PackedFloat32Array:
 	return _cached_outputs
 
 
+func get_activation(node_id: int) -> float:
+	return _activations.get(node_id, 0.0)
+
+
 func get_input_count() -> int:
 	return _input_ids.size()
 

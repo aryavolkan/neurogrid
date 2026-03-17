@@ -13,6 +13,7 @@ var creatures: Dictionary = {}
 var fitness_tracker: FitnessTracker
 var logger: SimLogger
 var ecology_system: EcologySystem
+var advanced_evolution: AdvancedEvolution
 
 
 func _init(p_world: GridWorld, p_pheromone_layer: PheromoneLayer) -> void:
@@ -200,6 +201,10 @@ func _skill_bite(creature: Creature) -> void:
 				creature.body.eat_food(kill_bonus)
 		if fitness_tracker:
 			fitness_tracker.record_damage_dealt(creature.creature_id, bite_damage)
+		if advanced_evolution:
+			advanced_evolution.record_interaction(
+				creature.body.species_id, target_creature.body.species_id,
+				bite_damage, not target_creature.body.is_alive())
 		if logger:
 			logger.bites_hit += 1
 

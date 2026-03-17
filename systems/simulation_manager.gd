@@ -17,6 +17,7 @@ var spawner: CreatureSpawner
 var fitness_tracker: FitnessTracker
 var species_manager: SpeciesManager
 var ecology_system: EcologySystem
+var advanced_evolution: AdvancedEvolution
 var logger: SimLogger
 
 var creatures: Dictionary = {}  # creature_id -> Creature
@@ -65,12 +66,14 @@ func _init_systems() -> void:
 	fitness_tracker = FitnessTracker.new()
 	species_manager = SpeciesManager.new(_dynamic_config)
 	ecology_system = EcologySystem.new(world)
+	advanced_evolution = AdvancedEvolution.new()
 
 	action_system = ActionSystem.new(world, pheromone_layer)
 	action_system.creatures = creatures
 	action_system.fitness_tracker = fitness_tracker
 	action_system.logger = logger
 	action_system.ecology_system = ecology_system
+	action_system.advanced_evolution = advanced_evolution
 
 	reproduction_system = ReproductionSystem.new(world)
 	reproduction_system.creatures = creatures
@@ -119,9 +122,10 @@ func _simulate_tick(delta: float) -> void:
 		body.age += 1
 		body.update_cooldowns(delta)
 
-		# Metabolism (modified by day/night cycle)
+		# Metabolism (modified by day/night cycle + ontogeny)
 		var receptor_cost := creature.brain.get_receptor_energy_cost()
 		var meta_mult := ecology_system.get_metabolism_multiplier()
+		meta_mult *= AdvancedEvolution.get_ontogeny_metabolism_mult(body.age)
 		body.energy -= (GameConfig.BASE_METABOLISM * meta_mult) + receptor_cost
 
 	# 2. Sense → Think → Act
@@ -134,8 +138,18 @@ func _simulate_tick(delta: float) -> void:
 		# Think
 		var outputs := creature.brain.think(creature.grid_pos, creature.body, creature.creature_id)
 
-		# Act
+		# Act (ontogeny: juveniles can't use skills)
+		if not AdvancedEvolution.can_use_skills(creature.body.age):
+			# Strip skill outputs for juveniles
+			for si in range(GameConfig.CORE_OUTPUT_COUNT, outputs.size()):
+				outputs[si] = 0.0
 		action_system.execute(creature, outputs)
+
+		# Neuromodulation: adjust weights based on energy change (reward signal)
+		var energy_after: float = creature.body.energy
+		var reward: float = (energy_after - creature.body.energy) * 0.01
+		if reward != 0.0:
+			AdvancedEvolution.apply_neuromodulation(creature.genome, creature.brain.network, reward)
 
 		# Reproduction check (mate_desire is output index 3)
 		if outputs.size() > 3 and outputs[3] > GameConfig.MATE_DESIRE_THRESHOLD:
@@ -218,9 +232,10 @@ func _kill_creature(creature_id: int) -> void:
 	# Log death cause
 	logger.record_death(creature_id, creature.body, creature.grid_pos)
 
-	# Compute and record fitness (including group bonus)
+	# Compute and record fitness (including group + coevolution bonuses)
 	var fitness := fitness_tracker.compute_fitness(creature_id, creature.body.age)
 	fitness += ecology_system.get_group_fitness_bonus(creature, creatures)
+	fitness += advanced_evolution.get_coevolution_bonus(creature.body.species_id)
 	creature.genome.fitness = fitness
 	species_manager.update_fitness(creature_id, fitness)
 
