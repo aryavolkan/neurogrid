@@ -94,6 +94,8 @@ func _process(delta: float) -> void:
 		status_parts.append("[PAUSED]")
 	if _sim.ecology_system and _sim.ecology_system.is_night():
 		status_parts.append("[NIGHT]")
+	if _sim.weather_system and _sim.weather_system.current_weather != WeatherSystem.Weather.CLEAR:
+		status_parts.append("[%s]" % _sim.weather_system.get_weather_name().to_upper())
 	var status_str: String = " ".join(status_parts)
 	_info_label.text = "[Space] Pause  [/] Speed  " + status_str
 
