@@ -48,52 +48,52 @@ Creatures spawn, sense, think (NEAT forward pass), act (move, eat, 8 skills), re
 - [x] GitHub Actions CI: test runner + GDScript validation on push/PR
 - [x] Economy rebalanced via data-driven headless testing (metabolism, reproduction costs, mating threshold)
 
+### Phase 10: Polish & Visualization (done)
+- [x] Genome viewer, debug overlay, sandbox tools, heatmaps, spatial hashing (see commit d113d87)
+- [ ] In-game help: tooltips, parameter descriptions, genome interpretation guide
+- [ ] Config presets (save/load GameConfig + DynamicConfig)
+
+### Phase 11: Behavioral Ecology (done)
+- [x] **Predator/prey role specialization:** carnivores gain 30% energy from kills via `EcologySystem.get_kill_energy_bonus()`, herbivores (no combat skills) get 50% food bonus
+- [x] **Territorial behavior:** creatures accumulate territory after 100 ticks in area — defense and attack bonuses within established territory
+- [x] **Group behavior incentives:** 0.5 fitness bonus per nearby ally (same species, range 4)
+- [x] **Nocturnal/diurnal cycles:** 600-tick day/night period — night: 0.7× metabolism, 0.5× sensor multiplier
+- [x] **Migration patterns:** food hotspot circulates over 5000-tick period (12-tile radius, 0.15 extra food regen)
+
+### Phase 12: Advanced Evolution (done)
+- [x] **Neuromodulation:** per-tick Hebbian-like connection weight adjustment (energy change × learning_rate × pre/post activation)
+- [x] **Sexual selection:** 4 evolved mate preference weights (complexity, skills, receptors, fitness) used during mate selection in `ReproductionSystem`
+- [x] **Ontogeny:** juvenile phase (first 200 ticks) with 0.6× metabolism and blocked skill access
+- [x] **Coevolutionary arms races:** inter-species interaction tracking (attacks, kills, damage) with escalation rewards
+- [x] **Speciation events tracking:** `PhylogenyTracker` logs species births, extinctions, lineage depth, and peak stats
+
+### Phase 13: World Complexity (done)
+- [x] **Multi-level terrain:** per-tile elevation from noise generation, affects movement cost (valleys cost more)
+- [x] **Dynamic terrain:** vegetation growth (grass→forest at high density, boosted by rain) and erosion (water-adjacent tiles lose elevation, sand→water)
+- [x] **Resource types:** minerals near rock/sand (reduce wall build cost), medicinal plants in forests (boost heal effectiveness)
+- [x] **Nesting sites:** up to 10 high-elevation sheltered locations where offspring get 1.5× initial energy
+- [x] **Weather system:** rain (food regen bonus), storms (damage to exposed creatures), fog (sensor range reduction) with configurable durations/probabilities
+
 ---
 
 ## In Progress
 
-### Phase 10: Polish & Visualization (in progress)
+### Phase 14: Analysis & Tooling (done)
 
-- [ ] **Genome viewer:** visual neural network graph — nodes colored by type, weighted edges
-- [ ] **Debug overlay:** show selected creature's sensory inputs, neural activations, action outputs
-- [ ] **Sandbox tools:** click to spawn/kill creatures, place/remove food and walls, drag creatures
-- [ ] **Heatmaps:** toggle overlays for food density, pheromone, creature density, death locations
-- [ ] **Performance:** spatial hashing for neighbor queries, off-screen culling, batch pheromone diffusion
-- [ ] **In-game help:** tooltips, parameter descriptions, genome interpretation guide
-- [ ] Config presets (save/load GameConfig + DynamicConfig)
+- [x] **Phylogenetic tree tracking:** `PhylogenyTracker` records species lineage, birth/extinction events, peak stats, tree depth, and generates text reports
+- [x] **Genome diff tool:** `GenomeDiff.compare()` produces structured diff — matching/disjoint/excess connections, weight differences, shared/unique receptors and skills, compatibility distance
+- [x] **Experiment runner (CSV export):** `ExperimentRunner` exports population snapshots, species snapshots, and generation stats to CSV (`user://experiments/`). F7 key for manual export, auto-export in headless mode
+- [x] **Phylogenetic tree visualization:** `PhylogenyPanel` (P key) — species lineage graph with DFS-ordered tree layout, lifespan bars colored by species, bar height scaled by population, parent-child connectors, extinction markers, tick axis, legend
+- [x] **Batch experiment runner:** `BatchRunner` + CLI `--sweep` mode — parameter sweeps across 6 sweepable GameConfig params (INITIAL_POPULATION, BASE_METABOLISM, REPRODUCTION_ENERGY_THRESHOLD, FOOD_REGEN_RATE, ADD_NODE_RATE, ADD_CONNECTION_RATE) with Cartesian product combos, multiple runs, and aggregated CSV export
+- [x] **Sensor range integration:** elevation bonus and weather fog multiplier now applied to actual `CreatureSensor` queries via `_effective_range()` helper
 
 ---
 
 ## Planned
 
-### Phase 11: Behavioral Ecology
+### Phase 15: Polish & Completeness
 
-- [ ] **Predator/prey role specialization:** carnivores gain energy from kills, herbivores get food bonus — diet emerges from evolved receptor/skill loadouts
-- [ ] **Territorial behavior:** creatures that stay in an area accumulate defensive bonuses (reduced damage taken, increased bite damage within territory)
-- [ ] **Group behavior incentives:** allied creatures (same species) near each other receive a fitness bonus, encouraging flocking and cooperative strategies
-- [ ] **Nocturnal/diurnal cycles:** alternate activity costs and sensor ranges — some receptors become more effective at night, movement costs shift by time of day
-- [ ] **Migration patterns:** food spawn locations shift gradually over long time scales (thousands of ticks), rewarding creatures that track resource movement
-
-### Phase 12: Advanced Evolution
-
-- [ ] **Neuromodulation:** evolved learning rates attached to connections that modify weights during a creature's lifetime based on reward signals
-- [ ] **Sexual selection:** mate preference genes that bias partner choice beyond compatibility distance — creatures evolve aesthetic or behavioral criteria for mates
-- [ ] **Ontogeny:** genome expression changes with creature age — juvenile creatures have reduced skill access and lower metabolism, adults unlock full genome potential
-- [ ] **Coevolutionary arms races:** track and reward competitive interactions between species — predator species and prey species drive each other's evolution
-- [ ] **Speciation events tracking:** log when species split, merge, or go extinct with full lineage metadata for post-hoc analysis
-
-### Phase 13: World Complexity
-
-- [ ] **Multi-level terrain:** elevation values per tile affecting movement cost and visibility range (high ground = longer sensor range, valleys = shelter)
-- [ ] **Dynamic terrain:** erosion, flooding, and vegetation growth that change the map over generations — terrain is no longer static after world generation
-- [ ] **Resource types beyond food:** minerals for wall building (reduces build_wall energy cost), medicinal plants for healing (boosts heal_self effectiveness)
-- [ ] **Nesting sites:** protected tile locations where offspring have higher initial energy and reduced predation risk during early life
-- [ ] **Weather system:** rain boosts food regeneration, storms deal damage to exposed creatures, fog reduces all sensor ranges temporarily
-
-### Phase 14: Analysis & Tooling
-
-- [ ] **Phylogenetic tree visualization:** species lineage graph over generations showing branching, extinction, and dominance shifts
-- [ ] **Genome diff tool:** compare two creatures' genomes side by side — highlight matching innovations, unique receptors/skills, and structural differences
-- [ ] **Experiment runner:** batch headless runs with parameter sweeps across GameConfig/DynamicConfig values, automatic CSV export of per-generation statistics
 - [ ] **W&B integration:** connect via `shared-evolve-utils` for cloud-based experiment tracking — log fitness curves, species counts, genome complexity, and population metrics
 - [ ] **Replay system:** record tick-by-tick snapshots of full simulation state, scrub timeline forward/backward, export to video for presentations and analysis
+- [ ] **In-game help:** tooltips, parameter descriptions, genome interpretation guide
+- [ ] **Config presets:** save/load GameConfig + DynamicConfig from named preset files

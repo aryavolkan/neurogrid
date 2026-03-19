@@ -6,6 +6,7 @@ var world: GridWorld
 var config: DynamicConfig
 var conn_tracker  # NeatInnovation
 var io_tracker: IoInnovation
+var weather_system: WeatherSystem  # Optional — set after init
 var _next_creature_id: int = 0
 
 
@@ -24,7 +25,7 @@ func spawn_creature(genome: DynamicGenome, pos: Vector2i = Vector2i(-1, -1), ene
 		return null  # No space
 
 	var creature := Creature.new()
-	var sensor := CreatureSensor.new(world)
+	var sensor := CreatureSensor.new(world, weather_system)
 	creature.setup(_next_creature_id, pos, genome, sensor, energy)
 	_next_creature_id += 1
 

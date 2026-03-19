@@ -45,7 +45,9 @@ Entities (Creature = Node2D visual + CreatureBody state + CreatureBrain network 
      ↓
 World (GridWorld 64×64 + GridTile + FoodManager + PheromoneLayer + WorldGenerator)
      ↓
-Systems (SimulationManager tick loop, ActionSystem, ReproductionSystem, CreatureSpawner)
+Systems (SimulationManager tick loop, ActionSystem, ReproductionSystem, CreatureSpawner, EcologySystem, AdvancedEvolution, WeatherSystem, PhylogenyTracker)
+     ↓
+Analysis (ExperimentRunner CSV export, GenomeDiff comparison)
 ```
 
 ### Key Data Flow
@@ -84,10 +86,11 @@ Key classes used by NeuroGrid:
 ### World
 
 - `GridWorld`: 64×64 grid, 16px/tile. Manages spatial indices (`_creature_positions`, `_food_positions`) and provides `find_nearest_food()`, `find_nearest_creature()`, `find_creatures_in_range()`.
-- `GridTile`: terrain (grass/forest/water/rock/sand), food, pheromone, wall, occupant_id, corpse_energy.
-- `WorldGenerator`: Simplex noise → elevation/moisture → terrain type. Initial food on grass/forest.
-- `FoodManager`: food regen (1.5× in forest), corpse energy decay, global food budget (8000 cap), seasonal sin-wave scarcity cycles (1000-tick period).
+- `GridTile`: terrain (grass/forest/water/rock/sand), food, pheromone, wall, occupant_id, corpse_energy, elevation, mineral, medicinal_plant.
+- `WorldGenerator`: Simplex noise → elevation/moisture → terrain type. Initial food on grass/forest. Places minerals near rock/sand and medicinal plants in forests. Places nesting sites on high-elevation tiles.
+- `FoodManager`: food regen (1.5× in forest), corpse energy decay, global food budget (8000 cap), seasonal sin-wave scarcity cycles (1000-tick period). Migration hotspot with circulating food bonus.
 - `PheromoneLayer`: deposit/decay/diffusion per tick.
+- `WeatherSystem` (RefCounted): rain/storm/fog weather events with configurable durations and probabilities. Rain boosts food regen, storms damage exposed creatures, fog reduces sensor ranges. Dynamic terrain: vegetation growth (grass→forest) and erosion (water-adjacent tiles lose elevation).
 
 ### Entities
 
@@ -105,8 +108,18 @@ Key classes used by NeuroGrid:
 - `CreatureSpawner` (RefCounted): factory for creatures with random or provided genomes, finds empty passable tiles, registers in spatial index.
 - `FitnessTracker` (RefCounted): per-creature lifetime metrics (energy gathered, food eaten, offspring, damage dealt). Computes scalar fitness and multi-objective `Vector3(survival, foraging, reproduction)` on death.
 - `SpeciesManager` (RefCounted): assigns creatures to species by genome compatibility, tracks per-species fitness/stagnation, adjusts compatibility threshold toward target species count.
+- `EcologySystem` (RefCounted): predator/prey role specialization (kill energy bonus for carnivores, food bonus for herbivores), territorial behavior (defense/attack bonuses after 100 ticks in area), group fitness bonus for nearby allies, day/night cycles (600-tick period, metabolism/sensor multipliers), migration patterns (circulating food hotspot over 5000-tick period).
+- `AdvancedEvolution` (RefCounted): neuromodulation (per-tick connection weight adjustment based on reward), sexual selection (4 evolved mate preference weights used in reproduction), ontogeny (juvenile phase with reduced metabolism and blocked skills for 200 ticks), coevolutionary arms race tracking (inter-species interaction rewards).
+- `PhylogenyTracker` (RefCounted): tracks species lineage over generations — birth, extinction, peak stats, tree depth, lineage queries, and text reports.
+- `GenomeDiff` (RefCounted): compares two `DynamicGenome`s — matching/disjoint/excess connections, weight differences, shared/unique receptors and skills, compatibility distance. `format_report()` produces human-readable diff.
+- `ExperimentRunner` (RefCounted): CSV export utilities — `export_generation_csv()`, `export_population_snapshot()`, `export_species_snapshot()`, `export_sweep_csv()`. Sweep support: `SweepConfig` for parameter grids, `generate_combinations()` for Cartesian product, `collect_run_result()` for harvest. Outputs to `user://experiments/`.
+- `BatchRunner` (Node): drives parameter sweep experiments — creates temporary `SimulationManager` instances, runs N ticks per combo × M repetitions, exports aggregated CSV. CLI: `--sweep NAME PARAM=val1,val2 --ticks N --runs M`.
 - `SimLogger` (RefCounted): per-tick and per-generation event counters (moves, eats, skills fired by name, bites, poisons, births, deaths by cause, random spawns). Lifetime stats (longest lived, most prolific parent).
-- `SaveSystem` (RefCounted): save/load full simulation state (world + genomes) to JSON. Export best genomes per species. Keys: F5 save, F9 load, F6 export.
+- `SaveSystem` (RefCounted): save/load full simulation state (world + genomes) to JSON. Export best genomes per species. Keys: F5 save, F9 load, F6 export. F7 exports CSV snapshots.
+
+### Sweepable Parameters
+
+Six `GameConfig` parameters are `static var` (not `const`) for batch sweep support: `INITIAL_POPULATION`, `BASE_METABOLISM`, `REPRODUCTION_ENERGY_THRESHOLD`, `FOOD_REGEN_RATE`, `ADD_NODE_RATE`, `ADD_CONNECTION_RATE`. Use `GameConfig.apply_overrides()` / `GameConfig.restore_defaults()` to manage them.
 
 ### UI
 
@@ -114,6 +127,7 @@ Key classes used by NeuroGrid:
 - `CameraController` (Camera2D): WASD/arrow pan, scroll zoom, middle-drag, speed controls (`[`/`]`), pause (Space).
 - `CreatureInspector` (CanvasLayer): click creature to see vitals, genome stats (nodes, connections, receptors, skills), receptor/skill names.
 - `StatsPanel` (CanvasLayer): toggle with Tab. Real-time line graphs for population, species count, and fitness history. Shows generation stats, food totals, famine indicator.
+- `PhylogenyPanel` (CanvasLayer): toggle with P. Species lineage tree visualization — DFS-ordered layout with lifespan bars, parent-child connectors, extinction markers, tick axis.
 
 ### evolve-core Class Name Wrappers
 
@@ -142,10 +156,14 @@ Key parameters in `GameConfig` — these were data-driven from 5000-tick headles
 
 ## Current State
 
-Full simulation loop with evolution: creatures spawn, sense, think, act (move, eat, 8 skills including burrow), reproduce with genome crossover, and die with fitness tracking. Species are managed with compatibility-based speciation and stagnation detection. Food has seasonal scarcity cycles. Save/load via F5/F9. Stats panel via Tab.
+Full simulation with behavioral ecology and advanced evolution. Creatures spawn, sense, think (NEAT forward pass with neuromodulation), act (move, eat, 8 skills), reproduce with sexual selection and genome crossover, and die with fitness tracking. Ecology features include predator/prey specialization, territorial bonuses, group behavior, day/night cycles, and migrating food hotspots. Evolution features include neuromodulation (Hebbian-like weight adjustment), mate preference genes, juvenile ontogeny, and coevolutionary arms race tracking.
 
-Headless mode auto-detects and prints exhaustive per-generation reports (deaths by cause, births, food consumed, skills fired, species breakdown).
+World has weather (rain/storm/fog), dynamic terrain (vegetation growth, erosion), elevation-based movement costs, resource types (minerals, medicinal plants), and nesting sites. Species are managed with compatibility-based speciation, stagnation detection, and phylogenetic lineage tracking.
 
-Verified via 5000-tick headless runs: reproduction working (98 births/run), fitness climbing across generations (0→14), multi-member species emerging, genome complexity growing (hidden nodes, receptors, skills appearing).
+Analysis tools: `GenomeDiff` for side-by-side genome comparison, `ExperimentRunner` for CSV export of population/species snapshots, `PhylogenyTracker` for species lineage reports. Headless mode auto-exports CSVs and phylogeny reports.
 
-See `ROADMAP.md` for remaining work (Phase 10: polish, advanced features).
+Save/load via F5/F9, export best genomes F6, export CSV snapshots F7. Stats panel via Tab.
+
+Batch experiments: `godot --path . --headless -- --sweep my_experiment BASE_METABOLISM=0.1,0.15,0.2 FOOD_REGEN_RATE=0.05,0.08 --ticks 5000 --runs 3` runs parameter sweeps and exports CSV results.
+
+See `ROADMAP.md` for remaining work (Phase 15: W&B integration, replay, polish).

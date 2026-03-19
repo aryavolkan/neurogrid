@@ -3,10 +3,12 @@ extends RefCounted
 ## Reads sensory data from the world for a creature's active receptor set.
 
 var world: GridWorld
+var weather_system: WeatherSystem  # Optional — null in tests
 
 
-func _init(p_world: GridWorld) -> void:
+func _init(p_world: GridWorld, p_weather: WeatherSystem = null) -> void:
 	world = p_world
+	weather_system = p_weather
 
 
 func get_core_inputs(pos: Vector2i, body: CreatureBody) -> PackedFloat32Array:
@@ -31,22 +33,33 @@ func get_receptor_value(registry_id: int, pos: Vector2i, body: CreatureBody, cre
 	## Query the world for a specific receptor value.
 	match registry_id:
 		0:  # smell_food_dist
-			return _query_food_dist(pos, 5)
+			return _query_food_dist(pos, _effective_range(5, pos))
 		1:  # smell_food_dx
-			return _query_food_dx(pos, 5)
+			return _query_food_dx(pos, _effective_range(5, pos))
 		2:  # smell_food_dy
-			return _query_food_dy(pos, 5)
+			return _query_food_dy(pos, _effective_range(5, pos))
 		3:  # sense_enemy_dist
-			return _query_enemy_dist(pos, 4, creature_id, body.species_id)
+			return _query_enemy_dist(pos, _effective_range(4, pos), creature_id, body.species_id)
 		4:  # sense_enemy_dx
-			return _query_enemy_dx(pos, 4, creature_id, body.species_id)
+			return _query_enemy_dx(pos, _effective_range(4, pos), creature_id, body.species_id)
 		5:  # sense_ally_count
-			return _query_ally_count(pos, 4, creature_id, body.species_id)
-		6:  # detect_pheromone
+			return _query_ally_count(pos, _effective_range(4, pos), creature_id, body.species_id)
+		6:  # detect_pheromone (tile-local, no range)
 			return _query_pheromone(pos)
-		7:  # sense_terrain
+		7:  # sense_terrain (tile-local, no range)
 			return _query_terrain(pos)
 	return 0.0
+
+
+func _effective_range(base_range: int, pos: Vector2i) -> int:
+	## Apply elevation bonus and weather fog penalty to sensor range.
+	var effective: int = base_range
+	var tile: GridTile = world.get_tile(pos)
+	if tile:
+		effective += tile.get_elevation_sensor_bonus()
+	if weather_system:
+		effective = int(float(effective) * weather_system.get_sensor_multiplier())
+	return maxi(effective, 1)
 
 
 func _query_food_dist(pos: Vector2i, max_range: int) -> float:

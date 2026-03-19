@@ -19,6 +19,7 @@ var species_manager: SpeciesManager
 var ecology_system: EcologySystem
 var advanced_evolution: AdvancedEvolution
 var weather_system: WeatherSystem
+var phylogeny: PhylogenyTracker
 var logger: SimLogger
 
 var creatures: Dictionary = {}  # creature_id -> Creature
@@ -69,6 +70,7 @@ func _init_systems() -> void:
 	species_manager = SpeciesManager.new(_dynamic_config)
 	ecology_system = EcologySystem.new(world)
 	advanced_evolution = AdvancedEvolution.new()
+	phylogeny = PhylogenyTracker.new()
 
 	action_system = ActionSystem.new(world, pheromone_layer)
 	action_system.creatures = creatures
@@ -81,6 +83,7 @@ func _init_systems() -> void:
 	reproduction_system.creatures = creatures
 
 	spawner = CreatureSpawner.new(world, _dynamic_config, _conn_tracker, _io_tracker)
+	spawner.weather_system = weather_system
 
 
 func _spawn_initial_population() -> void:
@@ -94,8 +97,13 @@ func _register_creature(creature: Creature) -> void:
 	creatures[creature.creature_id] = creature
 	fitness_tracker.register(creature.creature_id)
 
+	var old_species_count := species_manager.get_species_count()
 	var species_id := species_manager.assign_species(creature.creature_id, creature.genome)
 	creature.set_species_color(species_id)
+
+	# Track phylogeny: new species born
+	if species_manager.get_species_count() > old_species_count:
+		phylogeny.record_species_born(species_id, creature.body.species_id, _tick_count)
 
 	add_child(creature)
 	creature_spawned.emit(creature)
@@ -305,8 +313,20 @@ func _end_generation() -> void:
 		"log_report": logger.get_gen_report(),
 	}
 
+	# Update phylogeny: track species stats and extinctions
+	var species_before := species_manager.get_species_counts()
+	for sid in species_before:
+		var info = species_manager.get_species_info(sid)
+		if info:
+			phylogeny.update_species_stats(sid, species_before[sid], info.best_fitness_ever)
+
 	# Update species stagnation and compatibility threshold
 	species_manager.end_generation()
+
+	# Record extinctions
+	for sid in species_before:
+		if not species_manager.get_species_counts().has(sid):
+			phylogeny.record_species_extinct(sid, _tick_count)
 
 	# Reset innovation cache for new generation
 	_conn_tracker.reset_generation_cache()
