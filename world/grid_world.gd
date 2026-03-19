@@ -237,6 +237,24 @@ func _draw() -> void:
 		if tile.wall:
 			draw_rect(rect, Color(0.5, 0.4, 0.3, 0.9))
 
+		# Nesting site indicator (warm glow)
+		if tile.is_nest:
+			draw_rect(rect, Color(1.0, 0.85, 0.3, 0.15))
+			var center := Vector2(pos.x * tile_size + tile_size * 0.5, pos.y * tile_size + tile_size * 0.5)
+			draw_arc(center, tile_size * 0.4, 0, TAU, 12, Color(1.0, 0.8, 0.2, 0.35), 1.0)
+
+		# Mineral indicator (blue-gray sparkle)
+		if tile.minerals > 0.0:
+			var cx: float = pos.x * tile_size + tile_size * 0.25
+			var cy: float = pos.y * tile_size + tile_size * 0.75
+			draw_circle(Vector2(cx, cy), 1.5, Color(0.5, 0.6, 0.8, 0.6))
+
+		# Medicinal plant indicator (green cross)
+		if tile.medicinal > 0.0:
+			var cx: float = pos.x * tile_size + tile_size * 0.75
+			var cy: float = pos.y * tile_size + tile_size * 0.25
+			draw_circle(Vector2(cx, cy), 1.5, Color(0.3, 0.9, 0.5, 0.6))
+
 		# Pheromone overlay
 		if tile.pheromone > 0.01:
 			draw_rect(rect, Color(0.8, 0.2, 0.8, tile.pheromone * 0.4))

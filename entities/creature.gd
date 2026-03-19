@@ -53,26 +53,53 @@ func update_visual(delta: float) -> void:
 	queue_redraw()
 
 
+var selected: bool = false       # Set by CreatureInspector
+var species_highlighted: bool = false  # Set by SpeciesPanel
+
+
 func _draw() -> void:
 	var radius: float = GameConfig.TILE_SIZE * 0.35
 	var alpha: float = clampf(body.energy / GameConfig.MAX_ENERGY, 0.3, 1.0) if body.is_alive() else 0.2
+
+	# Species highlight ring (behind everything)
+	if species_highlighted:
+		draw_arc(Vector2.ZERO, radius + 3.0, 0, TAU, 24, base_color * 0.6, 1.5)
+
+	# Selection ring
+	if selected:
+		draw_arc(Vector2.ZERO, radius + 2.0, 0, TAU, 24, Color.WHITE, 2.0)
 
 	# Body circle
 	var color := base_color
 	color.a = alpha
 	draw_circle(Vector2.ZERO, radius, color)
 
+	# Energy ring (arc showing energy level)
+	var energy_frac: float = clampf(body.energy / GameConfig.MAX_ENERGY, 0.0, 1.0)
+	var ring_color := Color(0.2, 0.9, 0.2, 0.7) if energy_frac > 0.3 else Color(0.9, 0.2, 0.2, 0.8)
+	if energy_frac < 1.0:
+		draw_arc(Vector2.ZERO, radius + 1.0, -PI * 0.5, -PI * 0.5 + TAU * energy_frac, 20, ring_color, 1.0)
+
 	# Facing direction indicator
 	var facing_offset := Vector2(body.facing) * radius * 0.8
-	draw_circle(facing_offset, radius * 0.25, Color.WHITE * alpha)
+	draw_circle(facing_offset, radius * 0.25, Color(1.0, 1.0, 1.0, alpha))
 
 	# Health bar (if damaged)
 	if body.health < GameConfig.MAX_HEALTH:
 		var bar_width: float = GameConfig.TILE_SIZE * 0.8
 		var health_frac: float = body.health / GameConfig.MAX_HEALTH
-		var bar_y: float = -radius - 3.0
+		var bar_y: float = -radius - 4.0
 		draw_rect(Rect2(-bar_width * 0.5, bar_y, bar_width, 2), Color(0.3, 0.0, 0.0, 0.8))
 		draw_rect(Rect2(-bar_width * 0.5, bar_y, bar_width * health_frac, 2), Color(0.0, 0.8, 0.0, 0.8))
+
+	# Juvenile indicator (small dot)
+	if body.age < AdvancedEvolution.JUVENILE_AGE:
+		draw_circle(Vector2(0, -radius - 6.0), 1.5, Color(0.4, 0.8, 1.0, 0.9))
+
+	# Poisoned indicator (green pulse)
+	if body.poisoned_ticks > 0:
+		var pulse: float = 0.5 + 0.5 * sin(float(body.age) * 0.3)
+		draw_arc(Vector2.ZERO, radius - 1.0, 0, TAU, 16, Color(0.2, 0.8, 0.0, pulse * 0.6), 1.5)
 
 	# Burrowed indicator
 	if body.burrowed:

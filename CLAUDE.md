@@ -128,6 +128,7 @@ Six `GameConfig` parameters are `static var` (not `const`) for batch sweep suppo
 - `CreatureInspector` (CanvasLayer): click creature to see vitals, genome stats (nodes, connections, receptors, skills), receptor/skill names.
 - `StatsPanel` (CanvasLayer): toggle with Tab. Real-time line graphs for population, species count, and fitness history. Shows generation stats, food totals, famine indicator.
 - `PhylogenyPanel` (CanvasLayer): toggle with P. Species lineage tree visualization — DFS-ordered layout with lifespan bars, parent-child connectors, extinction markers, tick axis.
+- `SpeciesPanel` (CanvasLayer): toggle with S. Species list sorted by population, click to highlight all members on the grid and show representative genome's neural topology (nodes colored by type, weighted connections, labels).
 
 ### evolve-core Class Name Wrappers
 
