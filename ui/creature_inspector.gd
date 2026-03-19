@@ -73,10 +73,16 @@ func _try_select(screen_pos: Vector2) -> void:
 	var creature_id := _sim.world.get_creature_at(tile_pos)
 
 	if creature_id >= 0:
+		# Clear previous selection highlight
+		if _selected_creature_id >= 0 and _sim.creatures.has(_selected_creature_id):
+			_sim.creatures[_selected_creature_id].selected = false
 		_selected_creature_id = creature_id
+		_sim.creatures[creature_id].selected = true
 		_panel.visible = true
 		_update_info()
 	else:
+		if _selected_creature_id >= 0 and _sim.creatures.has(_selected_creature_id):
+			_sim.creatures[_selected_creature_id].selected = false
 		_selected_creature_id = -1
 		_panel.visible = false
 
@@ -137,7 +143,18 @@ func _update_info() -> void:
 			if entry:
 				text += "  %s\n" % entry.name
 
+	# Status indicators
+	var status_parts: Array = []
+	if body.age < AdvancedEvolution.JUVENILE_AGE:
+		status_parts.append("[color=cyan]JUVENILE[/color]")
 	if body.poisoned_ticks > 0:
-		text += "\n[color=green]POISONED (%d)[/color]" % body.poisoned_ticks
+		status_parts.append("[color=green]POISONED (%d)[/color]" % body.poisoned_ticks)
+	if body.burrowed:
+		status_parts.append("[color=orange]BURROWED[/color]")
+
+	if not status_parts.is_empty():
+		text += "\n" + "\n".join(status_parts)
+
+	text += "\n\nFitness: %.2f" % genome.fitness
 
 	_info_label.text = text

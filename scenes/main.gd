@@ -10,6 +10,7 @@ var genome_viewer: GenomeViewer
 var debug_overlay: DebugOverlay
 var heatmap_overlay: HeatmapOverlay
 var phylogeny_panel: PhylogenyPanel
+var species_panel: SpeciesPanel
 
 var _headless: bool = false
 var _headless_max_ticks: int = 5000
@@ -101,6 +102,11 @@ func _ready() -> void:
 	phylogeny_panel = PhylogenyPanel.new()
 	phylogeny_panel.setup(sim)
 	add_child(phylogeny_panel)
+
+	# Species panel (S to toggle)
+	species_panel = SpeciesPanel.new()
+	species_panel.setup(sim)
+	add_child(species_panel)
 
 
 func _unhandled_input(event: InputEvent) -> void:
