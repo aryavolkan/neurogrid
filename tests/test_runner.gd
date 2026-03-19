@@ -11,6 +11,7 @@ var _test_scenes: Array = [
 	"res://tests/test_species_manager.gd",
 	"res://tests/test_action_system.gd",
 	"res://tests/test_integration.gd",
+	"res://tests/test_phase14.gd",
 ]
 var _current: int = 0
 var _loaded: Array = []
