@@ -20,7 +20,7 @@ godot --path . --headless # Run headless (auto-detects, prints stats, 16x speed)
 godot --path . --headless -s tests/test_runner.gd
 ```
 
-8 test suites, 147 tests covering genome, network, world, creature body, fitness, species, action system, and integration.
+9 test suites, 200 tests covering genome, network, world, creature body, fitness, species, action system, integration, and Phase 14 (phylogeny, genome diff, experiment runner, sensor range, config overrides).
 
 ## Architecture
 
