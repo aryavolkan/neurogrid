@@ -9,6 +9,7 @@ var stats_panel: StatsPanel
 var genome_viewer: GenomeViewer
 var debug_overlay: DebugOverlay
 var heatmap_overlay: HeatmapOverlay
+var phylogeny_panel: PhylogenyPanel
 
 var _headless: bool = false
 var _headless_max_ticks: int = 5000
@@ -23,6 +24,12 @@ var _pop_at_tick: Array = []       # Array of {tick, pop}
 
 func _ready() -> void:
 	_headless = DisplayServer.get_name() == "headless"
+
+	# Check for batch sweep mode
+	var args := OS.get_cmdline_args()
+	if "--sweep" in args:
+		_run_batch_mode(args)
+		return
 
 	# Background color
 	if not _headless:
@@ -90,6 +97,11 @@ func _ready() -> void:
 	heatmap_overlay.setup(sim)
 	add_child(heatmap_overlay)
 
+	# Phylogeny panel (P to toggle)
+	phylogeny_panel = PhylogenyPanel.new()
+	phylogeny_panel.setup(sim)
+	add_child(phylogeny_panel)
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _headless:
@@ -103,6 +115,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				SaveSystem.load_simulation(sim)
 			KEY_F6:
 				SaveSystem.export_best_genomes(sim)
+			KEY_F7:
+				ExperimentRunner.export_population_snapshot(sim)
+				ExperimentRunner.export_species_snapshot(sim)
+				print("CSV snapshots exported")
 			KEY_F:
 				_food_place_mode = not _food_place_mode
 				if hud:
@@ -360,6 +376,62 @@ func _print_full_summary() -> void:
 				sid, species_counts[sid], info.best_fitness_ever, info.generations_without_improvement,
 			])
 
+	# Phylogenetic tree report
+	print("\n--- Phylogeny ---")
+	print(sim.phylogeny.get_report(sim.get_tick_count()))
+
+	# Export CSVs automatically in headless
+	ExperimentRunner.export_population_snapshot(sim, "headless_population")
+	ExperimentRunner.export_species_snapshot(sim, "headless_species")
+
 	print("\n" + "=".repeat(60))
 	print("END OF REPORT")
 	print("=".repeat(60))
+
+
+# --- Batch sweep mode ---
+
+func _run_batch_mode(args: Array) -> void:
+	## Parse CLI args and run parameter sweep.
+	## Usage: godot --path . --headless -- --sweep METABOLISM=0.1,0.15,0.2 POP=40,80 --ticks 5000 --runs 3
+	var config := ExperimentRunner.SweepConfig.new()
+
+	var i: int = 0
+	while i < args.size():
+		var arg: String = args[i]
+		if arg == "--sweep":
+			# Name follows if next arg doesn't start with -- and doesn't contain =
+			if i + 1 < args.size() and not args[i + 1].begins_with("--") and "=" not in args[i + 1]:
+				i += 1
+				config.name = args[i]
+		elif arg == "--ticks" and i + 1 < args.size():
+			i += 1
+			config.ticks = int(args[i])
+		elif arg == "--runs" and i + 1 < args.size():
+			i += 1
+			config.runs_per_combo = int(args[i])
+		elif "=" in arg and not arg.begins_with("--"):
+			# Parameter: NAME=val1,val2,val3
+			var parts := arg.split("=", true, 1)
+			var param_name: String = parts[0]
+			var values_str: String = parts[1]
+			var values: Array = []
+			for v in values_str.split(","):
+				values.append(float(v.strip_edges()))
+			config.param_grid[param_name] = values
+		i += 1
+
+	if config.param_grid.is_empty():
+		push_error("No sweep parameters specified. Usage: --sweep NAME PARAM=val1,val2 --ticks N --runs N")
+		get_tree().quit()
+		return
+
+	print("\n=== NeuroGrid Batch Sweep: %s ===" % config.name)
+	print("Params: %s" % str(config.param_grid))
+	print("Ticks: %d | Runs per combo: %d" % [config.ticks, config.runs_per_combo])
+	print("")
+
+	var runner := BatchRunner.new()
+	add_child(runner)
+	runner.batch_complete.connect(func(_results): get_tree().quit())
+	runner.start_sweep(config)

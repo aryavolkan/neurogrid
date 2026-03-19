@@ -48,8 +48,8 @@ func update(tick: int) -> void:
 	elif tick % WEATHER_CHECK_INTERVAL == 0:
 		_roll_weather()
 
-	# Dynamic terrain updates (every 10 ticks to save CPU)
-	if tick % 10 == 0:
+	# Dynamic terrain updates (every 100 ticks to save CPU)
+	if tick % 100 == 0:
 		_update_vegetation()
 		_update_erosion()
 
