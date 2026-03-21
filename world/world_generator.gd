@@ -8,6 +8,9 @@ static func generate(world: GridWorld) -> void:
 	_place_initial_food(world)
 	_place_resources(world)
 	_place_nesting_sites(world)
+	# Pre-compute cached values after all tile properties are set
+	for pos in world.tiles:
+		world.tiles[pos].update_cached_values()
 
 
 static func _generate_terrain(world: GridWorld) -> void:

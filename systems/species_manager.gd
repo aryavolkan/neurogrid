@@ -43,7 +43,7 @@ func assign_species(creature_id: int, genome: DynamicGenome) -> int:
 	# New species — log speciation event
 	var new_id := _next_species_id
 	_next_species_id += 1
-	var info := SpeciesInfo.new(new_id, genome.copy())
+	var info := SpeciesInfo.new(new_id, genome)
 	info.member_ids.append(creature_id)
 	_species[new_id] = info
 	_creature_species[creature_id] = new_id
@@ -135,4 +135,4 @@ func get_all_species() -> Dictionary:
 
 func update_representative(species_id: int, genome: DynamicGenome) -> void:
 	if _species.has(species_id):
-		_species[species_id].representative_genome = genome.copy()
+		_species[species_id].representative_genome = genome

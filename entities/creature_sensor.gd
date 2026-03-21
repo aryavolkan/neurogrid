@@ -29,19 +29,56 @@ func get_core_inputs(pos: Vector2i, body: CreatureBody) -> PackedFloat32Array:
 	return inputs
 
 
+## Per-tick sensor cache (reset each tick via begin_sensing)
+var _cached_food_pos: Vector2i = Vector2i(-2, -2)  # -2 = not cached
+var _cached_food_range: int = -1
+var _cached_enemy: Dictionary = {}
+var _cached_enemy_valid: bool = false
+var _cached_enemy_range: int = -1
+
+
+func begin_sensing() -> void:
+	## Call once per tick per creature before querying receptors.
+	_cached_food_pos = Vector2i(-2, -2)
+	_cached_food_range = -1
+	_cached_enemy_valid = false
+	_cached_enemy_range = -1
+
+
 func get_receptor_value(registry_id: int, pos: Vector2i, body: CreatureBody, creature_id: int) -> float:
 	## Query the world for a specific receptor value.
 	match registry_id:
 		0:  # smell_food_dist
-			return _query_food_dist(pos, _effective_range(5, pos))
+			var max_range := _effective_range(5, pos)
+			var food_pos := _get_cached_food(pos, max_range)
+			if food_pos.x < 0:
+				return 0.0
+			var dist: float = abs(food_pos.x - pos.x) + abs(food_pos.y - pos.y)
+			return 1.0 - (dist / float(max_range))
 		1:  # smell_food_dx
-			return _query_food_dx(pos, _effective_range(5, pos))
+			var max_range := _effective_range(5, pos)
+			var food_pos := _get_cached_food(pos, max_range)
+			if food_pos.x < 0:
+				return 0.0
+			return clampf(float(food_pos.x - pos.x) / float(max_range), -1.0, 1.0)
 		2:  # smell_food_dy
-			return _query_food_dy(pos, _effective_range(5, pos))
+			var max_range := _effective_range(5, pos)
+			var food_pos := _get_cached_food(pos, max_range)
+			if food_pos.x < 0:
+				return 0.0
+			return clampf(float(food_pos.y - pos.y) / float(max_range), -1.0, 1.0)
 		3:  # sense_enemy_dist
-			return _query_enemy_dist(pos, _effective_range(4, pos), creature_id, body.species_id)
+			var max_range := _effective_range(4, pos)
+			var nearest := _get_cached_enemy(pos, max_range, creature_id)
+			if nearest.is_empty():
+				return 0.0
+			return 1.0 - (float(nearest.dist) / float(max_range))
 		4:  # sense_enemy_dx
-			return _query_enemy_dx(pos, _effective_range(4, pos), creature_id, body.species_id)
+			var max_range := _effective_range(4, pos)
+			var nearest := _get_cached_enemy(pos, max_range, creature_id)
+			if nearest.is_empty():
+				return 0.0
+			return clampf(float(nearest.pos.x - pos.x) / float(max_range), -1.0, 1.0)
 		5:  # sense_ally_count
 			return _query_ally_count(pos, _effective_range(4, pos), creature_id, body.species_id)
 		6:  # detect_pheromone (tile-local, no range)
@@ -56,47 +93,27 @@ func _effective_range(base_range: int, pos: Vector2i) -> int:
 	var effective: int = base_range
 	var tile: GridTile = world.get_tile(pos)
 	if tile:
-		effective += tile.get_elevation_sensor_bonus()
+		effective += tile.sensor_bonus_range
 	if weather_system:
 		effective = int(float(effective) * weather_system.get_sensor_multiplier())
 	return maxi(effective, 1)
 
 
-func _query_food_dist(pos: Vector2i, max_range: int) -> float:
-	var food_pos := world.find_nearest_food(pos, max_range)
-	if food_pos.x < 0:
-		return 0.0
-	var dist: float = abs(food_pos.x - pos.x) + abs(food_pos.y - pos.y)
-	return 1.0 - (dist / float(max_range))  # Closer = higher
+func _get_cached_food(pos: Vector2i, max_range: int) -> Vector2i:
+	if _cached_food_range == max_range:
+		return _cached_food_pos
+	_cached_food_pos = world.find_nearest_food(pos, max_range)
+	_cached_food_range = max_range
+	return _cached_food_pos
 
 
-func _query_food_dx(pos: Vector2i, max_range: int) -> float:
-	var food_pos := world.find_nearest_food(pos, max_range)
-	if food_pos.x < 0:
-		return 0.0
-	return clampf(float(food_pos.x - pos.x) / float(max_range), -1.0, 1.0)
-
-
-func _query_food_dy(pos: Vector2i, max_range: int) -> float:
-	var food_pos := world.find_nearest_food(pos, max_range)
-	if food_pos.x < 0:
-		return 0.0
-	return clampf(float(food_pos.y - pos.y) / float(max_range), -1.0, 1.0)
-
-
-func _query_enemy_dist(pos: Vector2i, max_range: int, creature_id: int, species_id: int) -> float:
-	# For now, treat all other creatures as potential enemies (different species)
-	var nearest := world.find_nearest_creature(pos, max_range, creature_id)
-	if nearest.is_empty():
-		return 0.0
-	return 1.0 - (float(nearest.dist) / float(max_range))
-
-
-func _query_enemy_dx(pos: Vector2i, max_range: int, creature_id: int, species_id: int) -> float:
-	var nearest := world.find_nearest_creature(pos, max_range, creature_id)
-	if nearest.is_empty():
-		return 0.0
-	return clampf(float(nearest.pos.x - pos.x) / float(max_range), -1.0, 1.0)
+func _get_cached_enemy(pos: Vector2i, max_range: int, creature_id: int) -> Dictionary:
+	if _cached_enemy_valid and _cached_enemy_range == max_range:
+		return _cached_enemy
+	_cached_enemy = world.find_nearest_creature(pos, max_range, creature_id)
+	_cached_enemy_range = max_range
+	_cached_enemy_valid = true
+	return _cached_enemy
 
 
 func _query_ally_count(pos: Vector2i, max_range: int, creature_id: int, species_id: int) -> float:

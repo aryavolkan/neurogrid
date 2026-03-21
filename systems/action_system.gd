@@ -28,17 +28,13 @@ func execute(creature: Creature, outputs: PackedFloat32Array) -> void:
 		return
 
 	var body := creature.body
-	var actions: PackedStringArray = []
 
 	# Movement
 	_handle_movement(creature, outputs[0], outputs[1])
-	if absf(outputs[0]) > 0.2 or absf(outputs[1]) > 0.2:
-		actions.append("moving")
 
 	# Eating
 	if outputs[2] > EAT_DESIRE_THRESHOLD:
 		_handle_eating(creature)
-		actions.append("eating")
 
 	# Skills (after core outputs)
 	var skill_nodes := creature.brain.get_skill_nodes()
@@ -46,11 +42,6 @@ func execute(creature: Creature, outputs: PackedFloat32Array) -> void:
 		var output_idx: int = GameConfig.CORE_OUTPUT_COUNT + i
 		if output_idx < outputs.size() and outputs[output_idx] > SKILL_ACTIVATION_THRESHOLD:
 			_execute_skill(creature, skill_nodes[i].registry_id)
-			var entry = Registries.skill_registry.get_entry(skill_nodes[i].registry_id)
-			if entry:
-				actions.append(entry.name)
-
-	creature.last_action_summary = ", ".join(actions) if not actions.is_empty() else "idle"
 
 
 func _handle_movement(creature: Creature, move_x: float, move_y: float) -> void:
@@ -75,13 +66,13 @@ func _handle_movement(creature: Creature, move_x: float, move_y: float) -> void:
 	new_pos.y = clampi(new_pos.y, 0, world.height - 1)
 
 	if new_pos != creature.grid_pos and world.is_passable(new_pos):
-		# Terrain + elevation movement cost modifier
+		# Terrain + elevation movement cost modifier (uses cached values)
 		var tile: GridTile = world.get_tile(new_pos)
 		var cost_mult := 1.0
 		if tile:
-			if tile.terrain == GameConfig.Terrain.SAND:
+			if tile.is_sand:
 				cost_mult = 1.5
-			cost_mult *= tile.get_elevation_movement_cost()
+			cost_mult *= tile.movement_cost_mult
 		world.move_creature(creature.creature_id, creature.grid_pos, new_pos)
 		creature.grid_pos = new_pos
 		creature.body.energy -= GameConfig.MOVEMENT_COST * cost_mult
@@ -143,11 +134,11 @@ func _execute_skill(creature: Creature, skill_registry_id: int) -> void:
 	var tile: GridTile = world.get_tile(creature.grid_pos)
 	if tile:
 		# Minerals reduce build_wall cost
-		if skill_registry_id == 5 and tile.minerals > 0.0:
+		if skill_registry_id == GameConfig.SKILL_BUILD_WALL and tile.minerals > 0.0:
 			skill_cost *= 0.5
 			tile.minerals = maxf(tile.minerals - 1.0, 0.0)
 		# Medicinal plants boost heal_self (reduce cost, increase effect handled below)
-		if skill_registry_id == 6 and tile.medicinal > 0.0:
+		if skill_registry_id == GameConfig.SKILL_HEAL_SELF and tile.medicinal > 0.0:
 			skill_cost *= 0.5
 			tile.medicinal = maxf(tile.medicinal - 1.0, 0.0)
 	body.energy -= skill_cost
@@ -157,21 +148,21 @@ func _execute_skill(creature: Creature, skill_registry_id: int) -> void:
 		logger.record_skill(entry.name)
 
 	match skill_registry_id:
-		0:  # dash
+		GameConfig.SKILL_DASH:
 			_skill_dash(creature)
-		1:  # bite
+		GameConfig.SKILL_BITE:
 			_skill_bite(creature)
-		2:  # poison_spit
+		GameConfig.SKILL_POISON_SPIT:
 			_skill_poison_spit(creature)
-		3:  # emit_pheromone
+		GameConfig.SKILL_EMIT_PHEROMONE:
 			_skill_emit_pheromone(creature)
-		4:  # share_food
+		GameConfig.SKILL_SHARE_FOOD:
 			_skill_share_food(creature)
-		5:  # build_wall
+		GameConfig.SKILL_BUILD_WALL:
 			_skill_build_wall(creature)
-		6:  # heal_self
+		GameConfig.SKILL_HEAL_SELF:
 			_skill_heal_self(creature)
-		7:  # burrow
+		GameConfig.SKILL_BURROW:
 			_skill_burrow(creature)
 
 

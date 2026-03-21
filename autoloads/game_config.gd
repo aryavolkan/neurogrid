@@ -56,6 +56,16 @@ const COMPATIBILITY_THRESHOLD: float = 3.0
 # Terrain types
 enum Terrain { GRASS, FOREST, WATER, ROCK, SAND }
 
+# Skill registry IDs (must match SkillRegistry order)
+const SKILL_DASH: int = 0
+const SKILL_BITE: int = 1
+const SKILL_POISON_SPIT: int = 2
+const SKILL_EMIT_PHEROMONE: int = 3
+const SKILL_SHARE_FOOD: int = 4
+const SKILL_BUILD_WALL: int = 5
+const SKILL_HEAL_SELF: int = 6
+const SKILL_BURROW: int = 7
+
 # --- Sweep support: override/restore sweepable parameters ---
 
 static var _defaults: Dictionary = {
