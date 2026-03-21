@@ -35,7 +35,8 @@ class SkillEntry:
 	var activation_threshold: float
 	var description: String
 
-	func _init(p_id: int, p_name: String, p_cost: float, p_cd: float, p_cat: String, p_desc: String, p_thresh: float = 0.5) -> void:
+	func _init(p_id: int, p_name: String, p_cost: float, p_cd: float,
+			p_cat: String, p_desc: String, p_thresh: float = 0.5) -> void:
 		id = p_id
 		name = p_name
 		energy_cost = p_cost

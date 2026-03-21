@@ -461,9 +461,11 @@ func _test_skill_constants_all_defined() -> void:
 	var skill_count: int = Registries.skill_registry.get_count()
 	_assert_eq(skill_count, 8, "8 skills in registry")
 	# Verify each constant has a matching registry entry
-	for id in [GameConfig.SKILL_DASH, GameConfig.SKILL_BITE, GameConfig.SKILL_POISON_SPIT,
-			   GameConfig.SKILL_EMIT_PHEROMONE, GameConfig.SKILL_SHARE_FOOD,
-			   GameConfig.SKILL_BUILD_WALL, GameConfig.SKILL_HEAL_SELF, GameConfig.SKILL_BURROW]:
+	var all_skills: Array = [GameConfig.SKILL_DASH, GameConfig.SKILL_BITE,
+		GameConfig.SKILL_POISON_SPIT, GameConfig.SKILL_EMIT_PHEROMONE,
+		GameConfig.SKILL_SHARE_FOOD, GameConfig.SKILL_BUILD_WALL,
+		GameConfig.SKILL_HEAL_SELF, GameConfig.SKILL_BURROW]
+	for id in all_skills:
 		var entry = Registries.skill_registry.get_entry(id)
 		_assert_true(entry != null, "skill constant %d has registry entry" % id)
 

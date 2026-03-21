@@ -94,10 +94,12 @@ func end_tick() -> void:
 func get_gen_report() -> String:
 	var lines: Array = []
 	lines.append("  Moves: %d | Eats: %d | Food consumed: %.1f" % [gen_moves, gen_eats, gen_food_total])
-	lines.append("  Deaths: %d (energy: %d, health: %d, age: %d)" % [gen_deaths, gen_deaths_energy, gen_deaths_health, gen_deaths_age])
+	lines.append("  Deaths: %d (energy: %d, health: %d, age: %d)" % [
+		gen_deaths, gen_deaths_energy, gen_deaths_health, gen_deaths_age])
 	lines.append("  Births: %d (reproduced: %d, random spawn: %d)" % [gen_births, gen_reproductions, gen_spawns_random])
 	lines.append("  Bites landed: %d | Poisons hit: %d" % [gen_bites, gen_poisons])
-	var skill_names: Array = ["dash", "bite", "poison_spit", "emit_pheromone", "share_food", "build_wall", "heal_self", "burrow"]
+	var skill_names: Array = ["dash", "bite", "poison_spit", "emit_pheromone",
+		"share_food", "build_wall", "heal_self", "burrow"]
 	var skill_parts: Array = []
 	for i in 8:
 		if gen_skills[i] > 0:
@@ -153,7 +155,8 @@ func record_skill_by_id(skill_id: int) -> void:
 func record_skill(skill_name: String) -> void:
 	## Legacy string-based skill recording. Prefer record_skill_by_id().
 	# Map skill name to ID for backward compatibility
-	var skill_names: Array = ["dash", "bite", "poison_spit", "emit_pheromone", "share_food", "build_wall", "heal_self", "burrow"]
+	var skill_names: Array = ["dash", "bite", "poison_spit", "emit_pheromone",
+		"share_food", "build_wall", "heal_self", "burrow"]
 	var idx: int = skill_names.find(skill_name)
 	if idx >= 0:
 		skills_fired[idx] += 1
@@ -161,7 +164,8 @@ func record_skill(skill_name: String) -> void:
 
 func get_lifetime_report() -> String:
 	var lines: Array = []
-	lines.append("Total births: %d | Total deaths: %d | Total reproductions: %d" % [total_births, total_deaths, total_reproductions])
+	lines.append("Total births: %d | Total deaths: %d | Total reproductions: %d" % [
+		total_births, total_deaths, total_reproductions])
 	lines.append("Longest lived: creature #%d (age %d ticks)" % [longest_lived_id, longest_lived_age])
 	lines.append("Most offspring: creature #%d (%d offspring)" % [most_offspring_id, most_offspring_count])
 	return "\n".join(lines)

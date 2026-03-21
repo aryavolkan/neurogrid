@@ -16,7 +16,8 @@ var base_color: Color = Color.WHITE
 var _target_pixel_pos: Vector2
 
 
-func setup(p_id: int, p_pos: Vector2i, p_genome: DynamicGenome, p_sensor: CreatureSensor, p_energy: float = GameConfig.STARTING_ENERGY) -> void:
+func setup(p_id: int, p_pos: Vector2i, p_genome: DynamicGenome,
+		p_sensor: CreatureSensor, p_energy: float = GameConfig.STARTING_ENERGY) -> void:
 	creature_id = p_id
 	grid_pos = p_pos
 	genome = p_genome

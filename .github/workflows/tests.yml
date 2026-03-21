@@ -16,6 +16,17 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install gdtoolkit
+        run: pip install 'gdtoolkit==4.*'
+
+      - name: Lint GDScript
+        run: gdlint autoloads/ core/ entities/ systems/ world/ ui/ scenes/ tests/
+
       - name: Install Godot
         run: |
           GODOT_VERSION="4.5"

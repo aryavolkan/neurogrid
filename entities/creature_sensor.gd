@@ -52,7 +52,9 @@ func begin_sensing() -> void:
 	_cached_eff_range_pos = Vector2i(-99, -99)
 
 
-func get_receptor_value(registry_id: int, pos: Vector2i, body: CreatureBody, creature_id: int) -> float:
+func get_receptor_value(
+		registry_id: int, pos: Vector2i,
+		body: CreatureBody, creature_id: int) -> float:
 	## Query the world for a specific receptor value.
 	match registry_id:
 		0:  # smell_food_dist
@@ -138,7 +140,7 @@ func _get_cached_enemy(pos: Vector2i, max_range: int, creature_id: int) -> Dicti
 	return _cached_enemy
 
 
-func _query_ally_count(pos: Vector2i, max_range: int, creature_id: int, species_id: int) -> float:
+func _query_ally_count(pos: Vector2i, max_range: int, _creature_id: int, _species_id: int) -> float:
 	var creatures := world.find_creatures_in_range(pos, max_range)
 	# Count same species (placeholder: count all for MVP)
 	return clampf(float(creatures.size()) / 10.0, 0.0, 1.0)

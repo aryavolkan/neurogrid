@@ -661,7 +661,8 @@ func serialize() -> Dictionary:
 	}
 
 
-static func deserialize(data: Dictionary, p_config: DynamicConfig, p_conn_tracker, p_io_tracker: IoInnovation) -> DynamicGenome:
+static func deserialize(data: Dictionary, p_config: DynamicConfig,
+		p_conn_tracker, p_io_tracker: IoInnovation) -> DynamicGenome:
 	var genome := DynamicGenome.new()
 	genome.config = p_config
 	genome.innovation_tracker = p_conn_tracker
