@@ -174,7 +174,8 @@ static func export_sweep_csv(results: Array, param_names: Array, filename: Strin
 	var header: String = "run_id"
 	for pname in param_names:
 		header += "," + pname
-	header += ",final_population,final_species,total_births,total_deaths,best_fitness,avg_fitness,longest_lived,total_food_consumed"
+	header += ",final_population,final_species,total_births,total_deaths"
+	header += ",best_fitness,avg_fitness,longest_lived,total_food_consumed"
 	file.store_line(header)
 
 	# Write rows

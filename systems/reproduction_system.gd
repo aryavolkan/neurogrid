@@ -53,6 +53,7 @@ func _find_mate(creature: Creature) -> Creature:
 
 	var best_score: float = -999.0
 
+	var creature_gene_count: int = creature.genome.connection_genes.size()
 	for info in nearby:
 		if not creatures.has(info.id):
 			continue
@@ -66,6 +67,14 @@ func _find_mate(creature: Creature) -> Creature:
 				print("    [mate] #%d can't reproduce (E=%.1f cd=%.1f)" % [
 					info.id, candidate.body.energy, candidate.body.reproduction_cooldown])
 			continue
+
+		# Fast pre-filter: skip if gene count difference is extreme
+		var cand_gene_count: int = candidate.genome.connection_genes.size()
+		var n: float = maxf(creature_gene_count, cand_gene_count)
+		if n >= 20.0:
+			var size_diff: float = absf(creature_gene_count - cand_gene_count)
+			if size_diff / n > 0.8:  # Wildly different genome sizes — skip
+				continue
 
 		# Compatibility check
 		var compat := creature.genome.compatibility(candidate.genome)

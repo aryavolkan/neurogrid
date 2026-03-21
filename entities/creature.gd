@@ -16,7 +16,8 @@ var base_color: Color = Color.WHITE
 var _target_pixel_pos: Vector2
 
 
-func setup(p_id: int, p_pos: Vector2i, p_genome: DynamicGenome, p_sensor: CreatureSensor, p_energy: float = GameConfig.STARTING_ENERGY) -> void:
+func setup(p_id: int, p_pos: Vector2i, p_genome: DynamicGenome,
+		p_sensor: CreatureSensor, p_energy: float = GameConfig.STARTING_ENERGY) -> void:
 	creature_id = p_id
 	grid_pos = p_pos
 	genome = p_genome
@@ -45,12 +46,24 @@ func _update_pixel_pos_immediate() -> void:
 	_target_pixel_pos = position
 
 
+var _prev_energy: float = -1.0
+var _prev_health: float = -1.0
+
 func update_visual(delta: float) -> void:
-	## Smooth interpolation to target grid position.
+	## Smooth interpolation to target grid position. Only redraws if visually changed.
 	var ts := GameConfig.TILE_SIZE
 	_target_pixel_pos = Vector2(grid_pos.x * ts + ts * 0.5, grid_pos.y * ts + ts * 0.5)
+	var old_pos := position
 	position = position.lerp(_target_pixel_pos, minf(delta * 15.0, 1.0))
-	queue_redraw()
+
+	# Only redraw if position changed noticeably or state changed
+	var moved: bool = old_pos.distance_squared_to(position) > 0.1
+	var energy_changed: bool = absf(body.energy - _prev_energy) > 1.0
+	var health_changed: bool = absf(body.health - _prev_health) > 0.5
+	if moved or energy_changed or health_changed or selected or species_highlighted:
+		_prev_energy = body.energy
+		_prev_health = body.health
+		queue_redraw()
 
 
 var selected: bool = false       # Set by CreatureInspector

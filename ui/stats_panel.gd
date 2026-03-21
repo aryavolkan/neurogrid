@@ -152,4 +152,6 @@ func _draw_graph(node: Control, data: PackedFloat32Array, color: Color, label: S
 		prev_point = point
 
 	# Label
-	node.draw_string(ThemeDB.fallback_font, Vector2(2, y_off + 12), "%s (max: %.0f)" % [label, max_val], HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.7, 0.7, 0.7))
+	node.draw_string(ThemeDB.fallback_font, Vector2(2, y_off + 12),
+		"%s (max: %.0f)" % [label, max_val],
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.7, 0.7, 0.7))

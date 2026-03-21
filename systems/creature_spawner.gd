@@ -17,7 +17,8 @@ func _init(p_world: GridWorld, p_config: DynamicConfig, p_conn_tracker, p_io_tra
 	io_tracker = p_io_tracker
 
 
-func spawn_creature(genome: DynamicGenome, pos: Vector2i = Vector2i(-1, -1), energy: float = GameConfig.OFFSPRING_ENERGY) -> Creature:
+func spawn_creature(genome: DynamicGenome, pos: Vector2i = Vector2i(-1, -1),
+		energy: float = GameConfig.OFFSPRING_ENERGY) -> Creature:
 	## Spawn a single creature. If pos is (-1,-1), find a random empty tile.
 	if pos == Vector2i(-1, -1):
 		pos = _find_random_empty_tile()

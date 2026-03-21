@@ -32,10 +32,19 @@ func _init(p_config: DynamicConfig) -> void:
 
 func assign_species(creature_id: int, genome: DynamicGenome) -> int:
 	## Assign creature to an existing compatible species, or create a new one.
+	## Uses fast pre-filter on gene counts before expensive compatibility check.
+	var genome_size: int = genome.connection_genes.size()
+	var threshold: float = _config.neat_config.compatibility_threshold
 	for species_id in _species:
 		var info: SpeciesInfo = _species[species_id]
+		# Fast pre-filter: if gene count difference alone would exceed threshold, skip
+		var rep_size: int = info.representative_genome.connection_genes.size()
+		var size_diff: float = absf(genome_size - rep_size)
+		var n: float = maxf(genome_size, rep_size)
+		if n >= 20.0 and (size_diff / n) * _config.neat_config.c1_excess > threshold:
+			continue
 		var dist := genome.compatibility(info.representative_genome)
-		if dist < _config.neat_config.compatibility_threshold:
+		if dist < threshold:
 			info.member_ids.append(creature_id)
 			_creature_species[creature_id] = species_id
 			return species_id

@@ -31,20 +31,16 @@ func _init(p_world: GridWorld) -> void:
 	_food_hotspot = Vector2i(world.width / 2, world.height / 2)
 
 
-func update(tick: int, creatures: Dictionary) -> void:
+func update(tick: int, _creatures: Dictionary) -> void:
 	_day_tick = tick
 	_migration_tick = tick
-
-	# Update territories
-	for creature_id in creatures:
-		var creature: Creature = creatures[creature_id]
-		_update_territory(creature)
 
 	# Update food hotspot position (circular migration)
 	_update_hotspot(tick)
 
 
-func _update_territory(creature: Creature) -> void:
+func update_territory(creature: Creature) -> void:
+	## Call when a creature moves or once per tick. Tracks territorial behavior.
 	var cid: int = creature.creature_id
 	if not _territories.has(cid):
 		_territories[cid] = {"center": creature.grid_pos, "ticks": 0}

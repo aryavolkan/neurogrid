@@ -461,9 +461,11 @@ func _test_skill_constants_all_defined() -> void:
 	var skill_count: int = Registries.skill_registry.get_count()
 	_assert_eq(skill_count, 8, "8 skills in registry")
 	# Verify each constant has a matching registry entry
-	for id in [GameConfig.SKILL_DASH, GameConfig.SKILL_BITE, GameConfig.SKILL_POISON_SPIT,
-			   GameConfig.SKILL_EMIT_PHEROMONE, GameConfig.SKILL_SHARE_FOOD,
-			   GameConfig.SKILL_BUILD_WALL, GameConfig.SKILL_HEAL_SELF, GameConfig.SKILL_BURROW]:
+	var all_skills: Array = [GameConfig.SKILL_DASH, GameConfig.SKILL_BITE,
+		GameConfig.SKILL_POISON_SPIT, GameConfig.SKILL_EMIT_PHEROMONE,
+		GameConfig.SKILL_SHARE_FOOD, GameConfig.SKILL_BUILD_WALL,
+		GameConfig.SKILL_HEAL_SELF, GameConfig.SKILL_BURROW]
+	for id in all_skills:
 		var entry = Registries.skill_registry.get_entry(id)
 		_assert_true(entry != null, "skill constant %d has registry entry" % id)
 
@@ -578,7 +580,7 @@ func _test_world_generator_caches_initialized() -> void:
 	var found_elevated: bool = false
 	for pos in world.tiles:
 		var tile: GridTile = world.tiles[pos]
-		if tile.elevation > 0.3:
+		if tile.elevation > 0.5:  # Use 0.5 to ensure int(elev * 3.0) >= 1
 			found_elevated = true
 			_assert_true(tile.sensor_bonus_range > 0, "elevated tile has sensor bonus cached")
 			_assert_true(tile.movement_cost_mult > 1.0, "elevated tile has movement cost > 1.0")

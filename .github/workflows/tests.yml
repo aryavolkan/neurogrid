@@ -16,6 +16,17 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install gdtoolkit
+        run: pip install 'gdtoolkit==4.*'
+
+      - name: Lint GDScript
+        run: gdlint autoloads/ core/ entities/ systems/ world/ ui/ scenes/ tests/
+
       - name: Install Godot
         run: |
           GODOT_VERSION="4.5"
@@ -49,8 +60,8 @@ jobs:
           fi
           # Verify all suites ran
           SUITES=$(grep -c "tests passed\|FAILED" test_output.txt || true)
-          if [ "$SUITES" -lt 8 ]; then
-            echo "::error::Expected 8 test suites, only $SUITES completed"
+          if [ "$SUITES" -lt 11 ]; then
+            echo "::error::Expected 11 test suites, only $SUITES completed"
             exit 1
           fi
           echo "All tests passed"

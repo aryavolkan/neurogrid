@@ -198,72 +198,85 @@ func find_empty_adjacent(pos: Vector2i) -> Vector2i:
 
 # --- Rendering ---
 
+# Pre-computed terrain colors (indexed by GameConfig.Terrain enum)
+const TERRAIN_COLORS: Array = [
+	Color(0.2, 0.5, 0.2),   # GRASS
+	Color(0.1, 0.35, 0.1),  # FOREST
+	Color(0.15, 0.3, 0.6),  # WATER
+	Color(0.4, 0.4, 0.4),   # ROCK
+	Color(0.7, 0.65, 0.4),  # SAND
+]
+const DEFAULT_TERRAIN_COLOR: Color = Color(0.3, 0.3, 0.3)
+
+
 func _draw() -> void:
+	# Viewport culling: only draw visible tiles
 	var tile_size := GameConfig.TILE_SIZE
-	for pos in tiles:
-		var tile: GridTile = tiles[pos]
-		var rect := Rect2(pos.x * tile_size, pos.y * tile_size, tile_size, tile_size)
+	var viewport_rect := get_viewport_rect()
+	var canvas_transform := get_canvas_transform()
+	var inv_transform := canvas_transform.affine_inverse()
 
-		# Terrain color
-		var color: Color
-		match tile.terrain:
-			GameConfig.Terrain.GRASS:
-				color = Color(0.2, 0.5, 0.2)
-			GameConfig.Terrain.FOREST:
-				color = Color(0.1, 0.35, 0.1)
-			GameConfig.Terrain.WATER:
-				color = Color(0.15, 0.3, 0.6)
-			GameConfig.Terrain.ROCK:
-				color = Color(0.4, 0.4, 0.4)
-			GameConfig.Terrain.SAND:
-				color = Color(0.7, 0.65, 0.4)
-			_:
-				color = Color(0.3, 0.3, 0.3)
+	# Calculate visible tile range from viewport
+	var top_left := inv_transform * Vector2.ZERO
+	var bottom_right := inv_transform * viewport_rect.size
+	var min_x: int = maxi(int(top_left.x / tile_size) - 1, 0)
+	var min_y: int = maxi(int(top_left.y / tile_size) - 1, 0)
+	var max_x: int = mini(int(bottom_right.x / tile_size) + 1, width - 1)
+	var max_y: int = mini(int(bottom_right.y / tile_size) + 1, height - 1)
 
-		draw_rect(rect, color)
+	# Draw only visible tiles
+	var half_tile: float = tile_size * 0.5
+	for y in range(min_y, max_y + 1):
+		for x in range(min_x, max_x + 1):
+			var pos := Vector2i(x, y)
+			var tile: GridTile = tiles[pos]
+			var px: float = x * tile_size
+			var py: float = y * tile_size
+			var rect := Rect2(px, py, tile_size, tile_size)
 
-		# Food indicator (yellow-green dot)
-		if tile.food > 0.0:
-			var food_alpha: float = clampf(tile.food / GameConfig.MAX_FOOD_PER_TILE, 0.2, 1.0)
-			var center := Vector2(pos.x * tile_size + tile_size * 0.5, pos.y * tile_size + tile_size * 0.5)
-			draw_circle(center, tile_size * 0.25, Color(0.8, 0.9, 0.2, food_alpha))
+			# Terrain color (array lookup instead of match)
+			var color: Color = TERRAIN_COLORS[tile.terrain] if tile.terrain < TERRAIN_COLORS.size() else DEFAULT_TERRAIN_COLOR
+			draw_rect(rect, color)
 
-		# Corpse indicator (dark red dot)
-		if tile.corpse_energy > 0.0:
-			var center := Vector2(pos.x * tile_size + tile_size * 0.5, pos.y * tile_size + tile_size * 0.5)
-			draw_circle(center, tile_size * 0.2, Color(0.6, 0.1, 0.1, 0.8))
+			# Food indicator (yellow-green dot)
+			if tile.food > 0.0:
+				var food_alpha: float = clampf(tile.food / GameConfig.MAX_FOOD_PER_TILE, 0.2, 1.0)
+				draw_circle(Vector2(px + half_tile, py + half_tile), tile_size * 0.25, Color(0.8, 0.9, 0.2, food_alpha))
 
-		# Wall indicator
-		if tile.wall:
-			draw_rect(rect, Color(0.5, 0.4, 0.3, 0.9))
+			# Corpse indicator (dark red dot)
+			if tile.corpse_energy > 0.0:
+				draw_circle(Vector2(px + half_tile, py + half_tile), tile_size * 0.2, Color(0.6, 0.1, 0.1, 0.8))
 
-		# Nesting site indicator (warm glow)
-		if tile.is_nest:
-			draw_rect(rect, Color(1.0, 0.85, 0.3, 0.15))
-			var center := Vector2(pos.x * tile_size + tile_size * 0.5, pos.y * tile_size + tile_size * 0.5)
-			draw_arc(center, tile_size * 0.4, 0, TAU, 12, Color(1.0, 0.8, 0.2, 0.35), 1.0)
+			# Wall indicator
+			if tile.wall:
+				draw_rect(rect, Color(0.5, 0.4, 0.3, 0.9))
 
-		# Mineral indicator (blue-gray sparkle)
-		if tile.minerals > 0.0:
-			var cx: float = pos.x * tile_size + tile_size * 0.25
-			var cy: float = pos.y * tile_size + tile_size * 0.75
-			draw_circle(Vector2(cx, cy), 1.5, Color(0.5, 0.6, 0.8, 0.6))
+			# Nesting site indicator (warm glow)
+			if tile.is_nest:
+				draw_rect(rect, Color(1.0, 0.85, 0.3, 0.15))
+				draw_arc(Vector2(px + half_tile, py + half_tile), tile_size * 0.4, 0, TAU, 12, Color(1.0, 0.8, 0.2, 0.35), 1.0)
 
-		# Medicinal plant indicator (green cross)
-		if tile.medicinal > 0.0:
-			var cx: float = pos.x * tile_size + tile_size * 0.75
-			var cy: float = pos.y * tile_size + tile_size * 0.25
-			draw_circle(Vector2(cx, cy), 1.5, Color(0.3, 0.9, 0.5, 0.6))
+			# Mineral indicator (blue-gray sparkle)
+			if tile.minerals > 0.0:
+				draw_circle(Vector2(px + tile_size * 0.25, py + tile_size * 0.75), 1.5, Color(0.5, 0.6, 0.8, 0.6))
 
-		# Pheromone overlay
-		if tile.pheromone > 0.01:
-			draw_rect(rect, Color(0.8, 0.2, 0.8, tile.pheromone * 0.4))
+			# Medicinal plant indicator (green cross)
+			if tile.medicinal > 0.0:
+				draw_circle(Vector2(px + tile_size * 0.75, py + tile_size * 0.25), 1.5, Color(0.3, 0.9, 0.5, 0.6))
 
-	# Grid lines (subtle)
-	var total_w := width * tile_size
-	var total_h := height * tile_size
+			# Pheromone overlay
+			if tile.pheromone > 0.01:
+				draw_rect(rect, Color(0.8, 0.2, 0.8, tile.pheromone * 0.4))
+
+	# Grid lines (only visible range)
 	var line_color := Color(0.3, 0.3, 0.3, 0.15)
-	for x in range(width + 1):
-		draw_line(Vector2(x * tile_size, 0), Vector2(x * tile_size, total_h), line_color)
-	for y in range(height + 1):
-		draw_line(Vector2(0, y * tile_size), Vector2(total_w, y * tile_size), line_color)
+	var grid_y_start: float = min_y * tile_size
+	var grid_y_end: float = (max_y + 1) * tile_size
+	for x in range(min_x, max_x + 2):
+		var gx: float = x * tile_size
+		draw_line(Vector2(gx, grid_y_start), Vector2(gx, grid_y_end), line_color)
+	var grid_x_start: float = min_x * tile_size
+	var grid_x_end: float = (max_x + 1) * tile_size
+	for y in range(min_y, max_y + 2):
+		var gy: float = y * tile_size
+		draw_line(Vector2(grid_x_start, gy), Vector2(grid_x_end, gy), line_color)
