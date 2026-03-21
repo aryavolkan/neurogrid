@@ -63,6 +63,7 @@ func _test_food_index() -> void:
 	var tile: GridTile = world.get_tile(Vector2i(10, 10))
 	tile.food = 5.0
 	world.mark_food_dirty()
+	world.rebuild_food_index_if_dirty()
 	var nearest := world.find_nearest_food(Vector2i(10, 10), 3)
 	_assert_eq(nearest, Vector2i(10, 10), "find food at same tile")
 

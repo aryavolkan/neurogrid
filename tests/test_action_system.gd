@@ -115,6 +115,7 @@ func _test_movement_sand_cost() -> void:
 	_setup()
 	var c := _make_creature(Vector2i(10, 10))
 	_world.tiles[Vector2i(11, 10)].terrain = GameConfig.Terrain.SAND
+	_world.tiles[Vector2i(11, 10)].update_cached_values()
 	var before := c.body.energy
 	_action.execute(c, _make_outputs(1.0, 0.0))
 	var expected_cost := GameConfig.MOVEMENT_COST * 1.5
