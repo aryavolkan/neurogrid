@@ -112,9 +112,13 @@ func _rebuild_food_index() -> void:
 	_food_dirty = false
 
 
-func find_nearest_food(from: Vector2i, max_range: int) -> Vector2i:
+func rebuild_food_index_if_dirty() -> void:
+	## Call once per tick before any food queries to batch the rebuild.
 	if _food_dirty:
 		_rebuild_food_index()
+
+
+func find_nearest_food(from: Vector2i, max_range: int) -> Vector2i:
 	var best_pos := Vector2i(-1, -1)
 	var best_dist := max_range + 1
 	for food_pos in _food_positions:

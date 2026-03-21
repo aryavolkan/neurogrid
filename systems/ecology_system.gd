@@ -149,23 +149,14 @@ func get_hotspot_food_bonus(pos: Vector2i) -> float:
 func get_kill_energy_bonus(attacker: Creature, victim: Creature) -> float:
 	## Predator bonus: carnivores (creatures with bite skill) gain energy from kills.
 	## Returns energy to award to attacker.
-	var has_bite: bool = false
-	for node in attacker.genome.get_skill_nodes():
-		if node.registry_id == 1:  # bite
-			has_bite = true
-			break
-	if has_bite:
+	if attacker.genome.get_skill_registry_ids().has(GameConfig.SKILL_BITE):
 		return victim.body.energy * 0.3  # Gain 30% of victim's remaining energy
 	return 0.0
 
 
 func get_herbivore_food_bonus(creature: Creature) -> float:
 	## Herbivores (creatures WITHOUT bite/poison) get 50% more from food.
-	var has_combat: bool = false
-	for node in creature.genome.get_skill_nodes():
-		if node.registry_id == 1 or node.registry_id == 2:  # bite or poison
-			has_combat = true
-			break
-	if not has_combat:
+	var skill_ids := creature.genome.get_skill_registry_ids()
+	if not skill_ids.has(GameConfig.SKILL_BITE) and not skill_ids.has(GameConfig.SKILL_POISON_SPIT):
 		return 0.5  # 50% food bonus
 	return 0.0

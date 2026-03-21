@@ -10,11 +10,19 @@ var sensor: CreatureSensor
 var last_inputs: PackedFloat32Array
 var last_outputs: PackedFloat32Array
 
+# Cached receptor energy cost (computed once at init, doesn't change during lifetime)
+var _receptor_energy_cost: float = 0.0
+
 
 func _init(p_genome: DynamicGenome, p_sensor: CreatureSensor) -> void:
 	genome = p_genome
 	sensor = p_sensor
 	network = DynamicNetwork.from_genome(genome)
+	# Pre-compute receptor energy cost
+	for receptor_info in network.get_receptor_order():
+		var entry = Registries.receptor_registry.get_entry(receptor_info.registry_id)
+		if entry:
+			_receptor_energy_cost += entry.energy_cost
 
 
 func think(pos: Vector2i, body: CreatureBody, creature_id: int) -> PackedFloat32Array:
@@ -31,20 +39,15 @@ func think(pos: Vector2i, body: CreatureBody, creature_id: int) -> PackedFloat32
 		var val: float = sensor.get_receptor_value(receptor_info.registry_id, pos, body, creature_id)
 		inputs.append(val)
 
-	last_inputs = inputs.duplicate()
+	last_inputs = inputs
 	var result := network.forward(inputs)
-	last_outputs = result.duplicate()
+	last_outputs = result
 	return result
 
 
 func get_receptor_energy_cost() -> float:
-	## Total per-tick energy cost of all active receptors.
-	var cost: float = 0.0
-	for receptor_info in network.get_receptor_order():
-		var entry = Registries.receptor_registry.get_entry(receptor_info.registry_id)
-		if entry:
-			cost += entry.energy_cost
-	return cost
+	## Total per-tick energy cost of all active receptors (cached at init).
+	return _receptor_energy_cost
 
 
 func get_skill_nodes() -> Array:

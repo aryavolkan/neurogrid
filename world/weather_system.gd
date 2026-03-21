@@ -78,6 +78,7 @@ func _update_vegetation() -> void:
 			if tile.terrain == GameConfig.Terrain.GRASS and tile.vegetation > 0.9:
 				tile.terrain = GameConfig.Terrain.FOREST
 				tile.vegetation = 0.5
+				tile.update_cached_values()
 
 
 func _update_erosion() -> void:
@@ -96,9 +97,11 @@ func _update_erosion() -> void:
 				break
 		if near_water:
 			tile.elevation -= EROSION_RATE
+			tile.update_cached_values()
 			# Severe erosion can flood sand tiles
 			if tile.terrain == GameConfig.Terrain.SAND and tile.elevation < -0.25:
 				tile.terrain = GameConfig.Terrain.WATER
+				tile.update_cached_values()
 
 
 # --- Queries ---

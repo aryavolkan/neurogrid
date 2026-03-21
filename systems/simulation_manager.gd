@@ -139,13 +139,18 @@ func _simulate_tick(delta: float) -> void:
 		body.energy -= (GameConfig.BASE_METABOLISM * meta_mult) + receptor_cost
 
 	# 2. Sense → Think → Act
+	world.rebuild_food_index_if_dirty()
 	var offspring_queue: Array = []  # [{genome, parent_id, parent_pos}]
 	for creature_id in creatures:
 		var creature: Creature = creatures[creature_id]
 		if not creature.body.is_alive():
 			continue
 
+		# Reset per-creature sensor cache
+		creature.brain.sensor.begin_sensing()
+
 		# Think
+		var energy_before: float = creature.body.energy
 		var outputs := creature.brain.think(creature.grid_pos, creature.body, creature.creature_id)
 
 		# Act (ontogeny: juveniles can't use skills)
@@ -157,7 +162,7 @@ func _simulate_tick(delta: float) -> void:
 
 		# Neuromodulation: adjust weights based on energy change (reward signal)
 		var energy_after: float = creature.body.energy
-		var reward: float = (energy_after - creature.body.energy) * 0.01
+		var reward: float = (energy_after - energy_before) * 0.01
 		if reward != 0.0:
 			AdvancedEvolution.apply_neuromodulation(creature.genome, creature.brain.network, reward)
 
@@ -278,6 +283,7 @@ func _kill_creature(creature_id: int) -> void:
 	var tile: GridTile = world.get_tile(creature.grid_pos)
 	if tile:
 		Corpse.create_from_creature(creature.body, tile)
+		food_manager.add_corpse(creature.grid_pos)
 
 	# Clean up spatial index
 	world.clear_creature_position(creature.grid_pos)
