@@ -578,7 +578,7 @@ func _test_world_generator_caches_initialized() -> void:
 	var found_elevated: bool = false
 	for pos in world.tiles:
 		var tile: GridTile = world.tiles[pos]
-		if tile.elevation > 0.3:
+		if tile.elevation > 0.5:  # Use 0.5 to ensure int(elev * 3.0) >= 1
 			found_elevated = true
 			_assert_true(tile.sensor_bonus_range > 0, "elevated tile has sensor bonus cached")
 			_assert_true(tile.movement_cost_mult > 1.0, "elevated tile has movement cost > 1.0")
