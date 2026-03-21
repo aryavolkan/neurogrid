@@ -35,8 +35,11 @@ func _assign_color() -> void:
 
 
 func set_species_color(species_id: int) -> void:
+	## Use golden ratio hue + alternating saturation/value for better distinction.
 	var hue := fmod(float(species_id) * 0.618, 1.0)
-	base_color = Color.from_hsv(hue, 0.7, 0.9)
+	var sat := 0.65 + 0.2 * float(species_id % 3) / 2.0  # 0.65, 0.75, 0.85
+	var val := 0.8 + 0.15 * float((species_id + 1) % 2)   # 0.8 or 0.95
+	base_color = Color.from_hsv(hue, sat, val)
 	body.species_id = species_id
 
 
@@ -71,48 +74,72 @@ var species_highlighted: bool = false  # Set by SpeciesPanel
 
 
 func _draw() -> void:
-	var radius: float = GameConfig.TILE_SIZE * 0.35
-	var alpha: float = clampf(body.energy / GameConfig.MAX_ENERGY, 0.3, 1.0) if body.is_alive() else 0.2
+	var radius: float = GameConfig.TILE_SIZE * 0.4
+	var alive: bool = body.is_alive()
+	var alpha: float = clampf(body.energy / GameConfig.MAX_ENERGY, 0.4, 1.0) if alive else 0.15
 
 	# Species highlight ring (behind everything)
 	if species_highlighted:
-		draw_arc(Vector2.ZERO, radius + 3.0, 0, TAU, 24, base_color * 0.6, 1.5)
+		draw_arc(Vector2.ZERO, radius + 4.0, 0, TAU, 24,
+			Color(base_color.r, base_color.g, base_color.b, 0.5), 2.0)
 
-	# Selection ring
+	# Selection ring (bright, thick)
 	if selected:
-		draw_arc(Vector2.ZERO, radius + 2.0, 0, TAU, 24, Color.WHITE, 2.0)
+		draw_arc(Vector2.ZERO, radius + 3.0, 0, TAU, 24,
+			Color.WHITE, 2.5)
+		draw_arc(Vector2.ZERO, radius + 3.0, 0, TAU, 24,
+			Color(1.0, 1.0, 0.5, 0.4), 4.0)  # Outer glow
 
-	# Body circle
+	# Body circle with dark outline for visibility
 	var color := base_color
 	color.a = alpha
+	draw_circle(Vector2.ZERO, radius + 0.5, Color(0.0, 0.0, 0.0, alpha * 0.5))
 	draw_circle(Vector2.ZERO, radius, color)
 
 	# Energy ring (arc showing energy level)
 	var energy_frac: float = clampf(body.energy / GameConfig.MAX_ENERGY, 0.0, 1.0)
-	var ring_color := Color(0.2, 0.9, 0.2, 0.7) if energy_frac > 0.3 else Color(0.9, 0.2, 0.2, 0.8)
 	if energy_frac < 1.0:
-		draw_arc(Vector2.ZERO, radius + 1.0, -PI * 0.5, -PI * 0.5 + TAU * energy_frac, 20, ring_color, 1.0)
+		var ring_color: Color
+		if energy_frac > 0.5:
+			ring_color = Color(0.2, 0.9, 0.2, 0.8)
+		elif energy_frac > 0.2:
+			ring_color = Color(0.9, 0.7, 0.1, 0.8)
+		else:
+			ring_color = Color(0.9, 0.2, 0.2, 0.9)
+		draw_arc(Vector2.ZERO, radius + 1.5, -PI * 0.5,
+			-PI * 0.5 + TAU * energy_frac, 24, ring_color, 1.5)
 
 	# Facing direction indicator
-	var facing_offset := Vector2(body.facing) * radius * 0.8
-	draw_circle(facing_offset, radius * 0.25, Color(1.0, 1.0, 1.0, alpha))
+	var facing_offset := Vector2(body.facing) * radius * 0.7
+	draw_circle(facing_offset, radius * 0.22,
+		Color(1.0, 1.0, 1.0, alpha * 0.8))
 
 	# Health bar (if damaged)
 	if body.health < GameConfig.MAX_HEALTH:
-		var bar_width: float = GameConfig.TILE_SIZE * 0.8
+		var bar_width: float = GameConfig.TILE_SIZE * 0.9
 		var health_frac: float = body.health / GameConfig.MAX_HEALTH
-		var bar_y: float = -radius - 4.0
-		draw_rect(Rect2(-bar_width * 0.5, bar_y, bar_width, 2), Color(0.3, 0.0, 0.0, 0.8))
-		draw_rect(Rect2(-bar_width * 0.5, bar_y, bar_width * health_frac, 2), Color(0.0, 0.8, 0.0, 0.8))
+		var bar_y: float = -radius - 5.0
+		draw_rect(Rect2(-bar_width * 0.5, bar_y, bar_width, 3),
+			Color(0.3, 0.0, 0.0, 0.8))
+		draw_rect(Rect2(-bar_width * 0.5, bar_y,
+			bar_width * health_frac, 3),
+			Color(0.1, 0.85, 0.1, 0.9))
 
-	# Juvenile indicator (small dot)
+	# Juvenile indicator (cyan dot above)
 	if body.age < AdvancedEvolution.JUVENILE_AGE:
-		draw_circle(Vector2(0, -radius - 6.0), 1.5, Color(0.4, 0.8, 1.0, 0.9))
+		draw_circle(Vector2(0, -radius - 7.0), 2.0,
+			Color(0.4, 0.85, 1.0, 0.9))
 
-	# Poisoned indicator (green pulse)
+	# Poisoned indicator (green pulse ring)
 	if body.poisoned_ticks > 0:
 		var pulse: float = 0.5 + 0.5 * sin(float(body.age) * 0.3)
-		draw_arc(Vector2.ZERO, radius - 1.0, 0, TAU, 16, Color(0.2, 0.8, 0.0, pulse * 0.6), 1.5)
+		draw_arc(Vector2.ZERO, radius - 1.0, 0, TAU, 16,
+			Color(0.2, 0.85, 0.0, pulse * 0.7), 2.0)
+
+	# Burrowed indicator (dirt overlay)
+	if body.burrowed:
+		draw_circle(Vector2.ZERO, radius * 0.5,
+			Color(0.45, 0.35, 0.2, 0.7))
 
 	# Burrowed indicator
 	if body.burrowed:
