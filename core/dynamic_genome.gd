@@ -214,6 +214,7 @@ func mutate_add_receptor() -> void:
 			innovation_tracker.get_innovation(node_id, target.id)
 		)
 		connection_genes.append(conn)
+	_invalidate_io_cache()
 
 
 func mutate_add_skill() -> void:
@@ -247,6 +248,7 @@ func mutate_add_skill() -> void:
 			innovation_tracker.get_innovation(source.id, node_id)
 		)
 		connection_genes.append(conn)
+	_invalidate_io_cache()
 
 
 func mutate_remove_receptor() -> void:
@@ -255,6 +257,7 @@ func mutate_remove_receptor() -> void:
 		return
 	var to_remove: DynamicNodeGene = receptors[randi() % receptors.size()]
 	_remove_node(to_remove)
+	_invalidate_io_cache()
 
 
 func mutate_remove_skill() -> void:
@@ -263,6 +266,7 @@ func mutate_remove_skill() -> void:
 		return
 	var to_remove: DynamicNodeGene = skills[randi() % skills.size()]
 	_remove_node(to_remove)
+	_invalidate_io_cache()
 
 
 func _remove_node(node: DynamicNodeGene) -> void:
