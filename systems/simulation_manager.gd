@@ -39,8 +39,12 @@ var _gen_avg_fitness: float = 0.0
 var _gen_fitness_sum: float = 0.0
 var _gen_death_count: int = 0
 
+# Cached headless check (avoids calling DisplayServer every tick)
+var _is_headless: bool = false
+
 
 func _ready() -> void:
+	_is_headless = DisplayServer.get_name() == "headless"
 	_init_trackers()
 	_init_world()
 	_init_systems()
@@ -124,49 +128,59 @@ func _physics_process(delta: float) -> void:
 
 func _simulate_tick(delta: float) -> void:
 	_tick_count += 1
+	_update_metabolism(delta)
+	var offspring_queue := _sense_think_act()
+	_spawn_offspring(offspring_queue)
+	_handle_deaths()
+	_maintain_population()
+	_update_world(delta)
+	if _tick_count % GENERATION_INTERVAL == 0:
+		_end_generation()
+	logger.end_tick()
+	if not _is_headless:
+		_update_visuals(delta)
+	tick_complete.emit(_tick_count)
 
-	# 1. Update cooldowns, age, poison
+
+func _update_metabolism(delta: float) -> void:
+	## Step 1: age, cooldowns, metabolism for all creatures.
+	var base_meta_mult := ecology_system.get_metabolism_multiplier()
 	for creature_id in creatures:
 		var creature: Creature = creatures[creature_id]
 		var body := creature.body
 		body.age += 1
 		body.update_cooldowns(delta)
-
-		# Metabolism (modified by day/night cycle + ontogeny)
 		var receptor_cost := creature.brain.get_receptor_energy_cost()
-		var meta_mult := ecology_system.get_metabolism_multiplier()
-		meta_mult *= AdvancedEvolution.get_ontogeny_metabolism_mult(body.age)
+		var meta_mult := base_meta_mult * AdvancedEvolution.get_ontogeny_metabolism_mult(body.age)
 		body.energy -= (GameConfig.BASE_METABOLISM * meta_mult) + receptor_cost
 
-	# 2. Sense → Think → Act
+
+func _sense_think_act() -> Array:
+	## Step 2: sense, think, act for living creatures. Returns offspring queue.
 	world.rebuild_food_index_if_dirty()
-	var offspring_queue: Array = []  # [{genome, parent_id, parent_pos}]
+	var offspring_queue: Array = []
 	for creature_id in creatures:
 		var creature: Creature = creatures[creature_id]
 		if not creature.body.is_alive():
 			continue
 
-		# Reset per-creature sensor cache
 		creature.brain.sensor.begin_sensing()
 
-		# Think
 		var energy_before: float = creature.body.energy
-		var outputs := creature.brain.think(creature.grid_pos, creature.body, creature.creature_id)
+		var outputs := creature.brain.think(
+			creature.grid_pos, creature.body, creature.creature_id)
 
-		# Act (ontogeny: juveniles can't use skills)
 		if not AdvancedEvolution.can_use_skills(creature.body.age):
-			# Strip skill outputs for juveniles
 			for si in range(GameConfig.CORE_OUTPUT_COUNT, outputs.size()):
 				outputs[si] = 0.0
 		action_system.execute(creature, outputs)
 
-		# Neuromodulation: adjust weights based on energy change (reward signal)
 		var energy_after: float = creature.body.energy
 		var reward: float = (energy_after - energy_before) * 0.01
 		if reward != 0.0:
-			AdvancedEvolution.apply_neuromodulation(creature.genome, creature.brain.network, reward)
+			AdvancedEvolution.apply_neuromodulation(
+				creature.genome, creature.brain.network, reward)
 
-		# Reproduction check (mate_desire is output index 3)
 		if outputs.size() > 3 and outputs[3] > GameConfig.MATE_DESIRE_THRESHOLD:
 			logger.mate_attempts += 1
 			var child_genome := reproduction_system.try_reproduce(creature)
@@ -181,38 +195,45 @@ func _simulate_tick(delta: float) -> void:
 					logger.reproductions += 1
 			else:
 				logger.mate_no_partner += 1
+	return offspring_queue
 
-	# 3. Spawn offspring
+
+func _spawn_offspring(offspring_queue: Array) -> void:
+	## Step 3: spawn offspring from the queue.
 	for child_data in offspring_queue:
 		if creatures.size() >= GameConfig.MAX_CREATURES:
 			break
-		# Nesting site bonus: offspring get extra energy if born on a nest
 		var spawn_energy: float = GameConfig.OFFSPRING_ENERGY
 		var spawn_tile: GridTile = world.get_tile(child_data.pos)
 		if spawn_tile and spawn_tile.is_nest:
-			spawn_energy *= 1.5  # 50% bonus energy at nesting sites
-		var child := spawner.spawn_creature(child_data.genome, child_data.pos, spawn_energy)
+			spawn_energy *= 1.5
+		var child := spawner.spawn_creature(
+			child_data.genome, child_data.pos, spawn_energy)
 		if child:
 			_register_creature(child)
 			fitness_tracker.record_offspring(child_data.parent_id)
 			logger.births += 1
-			logger.total_offspring_by_id[child_data.parent_id] = logger.total_offspring_by_id.get(child_data.parent_id, 0) + 1
-			var count: int = logger.total_offspring_by_id[child_data.parent_id]
+			var pid: int = child_data.parent_id
+			logger.total_offspring_by_id[pid] = (
+				logger.total_offspring_by_id.get(pid, 0) + 1)
+			var count: int = logger.total_offspring_by_id[pid]
 			if count > logger.most_offspring_count:
 				logger.most_offspring_count = count
-				logger.most_offspring_id = child_data.parent_id
+				logger.most_offspring_id = pid
 
-	# 4. Check deaths
+
+func _handle_deaths() -> void:
+	## Step 4: collect and process dead creatures.
 	var dead_ids: Array = []
 	for creature_id in creatures:
-		var creature: Creature = creatures[creature_id]
-		if not creature.body.is_alive():
+		if not creatures[creature_id].body.is_alive():
 			dead_ids.append(creature_id)
-
 	for creature_id in dead_ids:
 		_kill_creature(creature_id)
 
-	# 5. Maintain minimum population
+
+func _maintain_population() -> void:
+	## Step 5: spawn random creatures to maintain minimum population.
 	while creatures.size() < GameConfig.MIN_CREATURES:
 		var creature := spawner.spawn_random_creature()
 		if creature:
@@ -221,12 +242,11 @@ func _simulate_tick(delta: float) -> void:
 		else:
 			break
 
-	# 6. Ecology updates (territory, migration, day/night)
-	ecology_system.update(_tick_count, creatures)
 
-	# 7. Weather and dynamic terrain
+func _update_world(delta: float) -> void:
+	## Steps 6-8: ecology, weather, food, pheromone updates.
+	ecology_system.update(_tick_count, creatures)
 	weather_system.update(_tick_count)
-	# Storm damage to exposed (non-burrowed, non-forest) creatures
 	if weather_system.is_storm():
 		var storm_dmg: float = weather_system.get_storm_damage()
 		for cid in creatures:
@@ -235,27 +255,17 @@ func _simulate_tick(delta: float) -> void:
 				continue
 			var tile: GridTile = world.get_tile(c.grid_pos)
 			if tile and tile.terrain == GameConfig.Terrain.FOREST:
-				continue  # Forest provides shelter from storms
+				continue
 			c.body.take_damage(storm_dmg)
-
-	# 8. World updates (food manager uses hotspot + weather)
 	food_manager.update(delta, ecology_system, weather_system)
 	pheromone_layer.update(delta)
 
-	# 9. Generation boundary check
-	if _tick_count % GENERATION_INTERVAL == 0:
-		_end_generation()
 
-	# 10. End-of-tick logging
-	logger.end_tick()
-
-	# 11. Visual refresh (skip in headless)
-	if DisplayServer.get_name() != "headless":
-		for creature_id in creatures:
-			creatures[creature_id].update_visual(delta)
-		world.queue_redraw()
-
-	tick_complete.emit(_tick_count)
+func _update_visuals(delta: float) -> void:
+	## Step 11: visual refresh (skipped in headless).
+	for creature_id in creatures:
+		creatures[creature_id].update_visual(delta)
+	world.queue_redraw()
 
 
 func _kill_creature(creature_id: int) -> void:

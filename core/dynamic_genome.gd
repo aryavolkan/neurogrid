@@ -69,10 +69,16 @@ var innovation_tracker  # NeatInnovation (connection innovations)
 var io_tracker: IoInnovation  # Receptor/skill innovations
 
 # Sexual selection: evolved mate preference weights (Phase 12)
-var mate_pref_complexity: float = 0.0  # Preference for genome complexity
-var mate_pref_skills: float = 0.0     # Preference for skill count
-var mate_pref_receptors: float = 0.0  # Preference for receptor count
-var mate_pref_fitness: float = 0.0    # Preference for high fitness
+var mate_pref_complexity: float = 0.0
+var mate_pref_skills: float = 0.0
+var mate_pref_receptors: float = 0.0
+var mate_pref_fitness: float = 0.0
+
+# Cached counts (invalidated by mutations that add/remove nodes)
+var _cached_receptor_count: int = -1
+var _cached_skill_count: int = -1
+var _cached_skill_ids: Dictionary = {}
+var _cached_skill_ids_valid: bool = false
 
 
 static func create(p_config: DynamicConfig, p_conn_tracker, p_io_tracker: IoInnovation) -> DynamicGenome:
@@ -129,26 +135,41 @@ func get_receptor_registry_ids() -> Dictionary:
 
 
 func get_skill_registry_ids() -> Dictionary:
-	var ids: Dictionary = {}
+	if _cached_skill_ids_valid:
+		return _cached_skill_ids
+	_cached_skill_ids.clear()
 	for node in node_genes:
 		if node.type == TYPE_SKILL:
-			ids[node.registry_id] = true
-	return ids
+			_cached_skill_ids[node.registry_id] = true
+	_cached_skill_ids_valid = true
+	return _cached_skill_ids
+
+
+func _invalidate_io_cache() -> void:
+	_cached_receptor_count = -1
+	_cached_skill_count = -1
+	_cached_skill_ids_valid = false
 
 
 func get_receptor_count() -> int:
+	if _cached_receptor_count >= 0:
+		return _cached_receptor_count
 	var count: int = 0
 	for node in node_genes:
 		if node.type == TYPE_RECEPTOR:
 			count += 1
+	_cached_receptor_count = count
 	return count
 
 
 func get_skill_count() -> int:
+	if _cached_skill_count >= 0:
+		return _cached_skill_count
 	var count: int = 0
 	for node in node_genes:
 		if node.type == TYPE_SKILL:
 			count += 1
+	_cached_skill_count = count
 	return count
 
 
@@ -193,6 +214,7 @@ func mutate_add_receptor() -> void:
 			innovation_tracker.get_innovation(node_id, target.id)
 		)
 		connection_genes.append(conn)
+	_invalidate_io_cache()
 
 
 func mutate_add_skill() -> void:
@@ -226,6 +248,7 @@ func mutate_add_skill() -> void:
 			innovation_tracker.get_innovation(source.id, node_id)
 		)
 		connection_genes.append(conn)
+	_invalidate_io_cache()
 
 
 func mutate_remove_receptor() -> void:
@@ -234,6 +257,7 @@ func mutate_remove_receptor() -> void:
 		return
 	var to_remove: DynamicNodeGene = receptors[randi() % receptors.size()]
 	_remove_node(to_remove)
+	_invalidate_io_cache()
 
 
 func mutate_remove_skill() -> void:
@@ -242,6 +266,7 @@ func mutate_remove_skill() -> void:
 		return
 	var to_remove: DynamicNodeGene = skills[randi() % skills.size()]
 	_remove_node(to_remove)
+	_invalidate_io_cache()
 
 
 func _remove_node(node: DynamicNodeGene) -> void:
@@ -350,6 +375,8 @@ func mutate() -> void:
 		mate_pref_skills += _randn() * 0.2
 		mate_pref_receptors += _randn() * 0.2
 		mate_pref_fitness += _randn() * 0.2
+	# Invalidate cached counts after structural mutations
+	_invalidate_io_cache()
 
 
 # --- Compatibility ---
