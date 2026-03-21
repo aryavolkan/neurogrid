@@ -6,7 +6,7 @@ var energy: float = GameConfig.STARTING_ENERGY
 var health: float = GameConfig.MAX_HEALTH
 var age: int = 0  # Ticks alive
 var reproduction_cooldown: float = 0.0  # Seconds remaining
-var skill_cooldowns: Dictionary = {}  # skill_registry_id -> ticks remaining
+var skill_cooldowns: Array = [0, 0, 0, 0, 0, 0, 0, 0]  # Indexed by skill ID
 var facing: Vector2i = Vector2i(1, 0)  # Last movement direction
 var poisoned_ticks: int = 0  # Poison damage remaining
 var burrowed: bool = false  # Immune to damage when burrowed
@@ -49,13 +49,9 @@ func update_cooldowns(delta: float) -> void:
 	if reproduction_cooldown > 0.0:
 		reproduction_cooldown -= delta
 
-	var to_remove: Array = []
-	for skill_id in skill_cooldowns:
-		skill_cooldowns[skill_id] -= 1
-		if skill_cooldowns[skill_id] <= 0:
-			to_remove.append(skill_id)
-	for skill_id in to_remove:
-		skill_cooldowns.erase(skill_id)
+	for i in 8:
+		if skill_cooldowns[i] > 0:
+			skill_cooldowns[i] -= 1
 
 	# Poison
 	if poisoned_ticks > 0:
@@ -70,8 +66,11 @@ func update_cooldowns(delta: float) -> void:
 
 
 func set_skill_cooldown(skill_id: int, ticks: int) -> void:
-	skill_cooldowns[skill_id] = ticks
+	if skill_id >= 0 and skill_id < 8:
+		skill_cooldowns[skill_id] = ticks
 
 
 func is_skill_ready(skill_id: int) -> bool:
-	return not skill_cooldowns.has(skill_id)
+	if skill_id >= 0 and skill_id < 8:
+		return skill_cooldowns[skill_id] <= 0
+	return false
