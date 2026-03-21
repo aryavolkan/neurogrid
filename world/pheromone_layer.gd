@@ -8,6 +8,7 @@ const MIN_PHEROMONE: float = 0.001
 
 var world: GridWorld
 var _active_tiles: Dictionary = {}  # Vector2i -> true (tiles with non-zero pheromone)
+var _new_values: Dictionary = {}    # Reused across ticks to avoid allocation
 
 
 func _init(p_world: GridWorld) -> void:
@@ -26,7 +27,7 @@ func update(_delta: float) -> void:
 	if _active_tiles.is_empty():
 		return
 
-	var new_values: Dictionary = {}
+	_new_values.clear()
 	var tiles_to_process: Array = _active_tiles.keys()
 
 	for pos in tiles_to_process:
@@ -43,9 +44,9 @@ func update(_delta: float) -> void:
 		val -= diffuse_amount * neighbors.size()
 
 		for npos in neighbors:
-			new_values[npos] = new_values.get(npos, 0.0) + diffuse_amount
+			_new_values[npos] = _new_values.get(npos, 0.0) + diffuse_amount
 
-		new_values[pos] = new_values.get(pos, 0.0) + maxf(val, 0.0)
+		_new_values[pos] = _new_values.get(pos, 0.0) + maxf(val, 0.0)
 
 	# Clear old active tiles
 	for pos in tiles_to_process:
@@ -53,8 +54,8 @@ func update(_delta: float) -> void:
 	_active_tiles.clear()
 
 	# Apply new values, track new active set
-	for pos in new_values:
-		var val: float = new_values[pos]
+	for pos in _new_values:
+		var val: float = _new_values[pos]
 		if val >= MIN_PHEROMONE:
 			var tile: GridTile = world.get_tile(pos)
 			if tile:

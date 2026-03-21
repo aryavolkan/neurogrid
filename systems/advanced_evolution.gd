@@ -75,19 +75,21 @@ static func can_use_skills(age: int) -> bool:
 # --- Coevolutionary Arms Races ---
 # Track competitive interactions between species and reward escalation.
 
-var _species_interactions: Dictionary = {}  # "attacker_sp:defender_sp" -> {attacks, kills, damage}
+var _species_interactions: Dictionary = {}  # attacker_sp -> {defender_sp -> {attacks, kills, damage}}
 
 
 func record_interaction(attacker_species: int, defender_species: int, damage: float, killed: bool) -> void:
 	if attacker_species == defender_species:
 		return  # Intra-species doesn't count
-	var key: String = "%d:%d" % [attacker_species, defender_species]
-	if not _species_interactions.has(key):
-		_species_interactions[key] = {"attacks": 0, "kills": 0, "damage": 0.0}
-	_species_interactions[key].attacks += 1
-	_species_interactions[key].damage += damage
+	if not _species_interactions.has(attacker_species):
+		_species_interactions[attacker_species] = {}
+	var attacker_dict: Dictionary = _species_interactions[attacker_species]
+	if not attacker_dict.has(defender_species):
+		attacker_dict[defender_species] = {"attacks": 0, "kills": 0, "damage": 0.0}
+	attacker_dict[defender_species].attacks += 1
+	attacker_dict[defender_species].damage += damage
 	if killed:
-		_species_interactions[key].kills += 1
+		attacker_dict[defender_species].kills += 1
 
 
 func get_coevolution_bonus(species_id: int) -> float:
@@ -96,16 +98,19 @@ func get_coevolution_bonus(species_id: int) -> float:
 	var attack_score: float = 0.0
 	var defense_score: float = 0.0
 
-	for key in _species_interactions:
-		var parts: PackedStringArray = key.split(":")
-		var attacker: int = int(parts[0])
-		var defender: int = int(parts[1])
-		var info: Dictionary = _species_interactions[key]
-
-		if attacker == species_id:
+	# Attack score: species_id as attacker
+	if _species_interactions.has(species_id):
+		for defender in _species_interactions[species_id]:
+			var info: Dictionary = _species_interactions[species_id][defender]
 			attack_score += float(info.kills) * 2.0 + info.damage / 100.0
-		if defender == species_id:
-			# Surviving attacks is valuable
+
+	# Defense score: species_id as defender
+	for attacker in _species_interactions:
+		if attacker == species_id:
+			continue
+		var attacker_dict: Dictionary = _species_interactions[attacker]
+		if attacker_dict.has(species_id):
+			var info: Dictionary = attacker_dict[species_id]
 			defense_score += float(info.attacks - info.kills) * 0.5
 
 	return (attack_score + defense_score) * 0.1
@@ -119,7 +124,8 @@ func get_interaction_report() -> String:
 	if _species_interactions.is_empty():
 		return "  No inter-species interactions"
 	var lines: Array = []
-	for key in _species_interactions:
-		var info: Dictionary = _species_interactions[key]
-		lines.append("  %s: %d attacks, %d kills, %.1f dmg" % [key, info.attacks, info.kills, info.damage])
+	for attacker in _species_interactions:
+		for defender in _species_interactions[attacker]:
+			var info: Dictionary = _species_interactions[attacker][defender]
+			lines.append("  %d→%d: %d attacks, %d kills, %.1f dmg" % [attacker, defender, info.attacks, info.kills, info.damage])
 	return "\n".join(lines)

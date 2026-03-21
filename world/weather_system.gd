@@ -4,6 +4,11 @@ extends RefCounted
 
 var world: GridWorld
 
+# Pre-computed sparse tile sets (built once, updated incrementally)
+var _vegetation_tiles: Array = []  # Tiles eligible for vegetation growth (grass/forest)
+var _erosion_tiles: Array = []     # Tiles adjacent to water (erosion candidates)
+var _sparse_initialized: bool = false
+
 # Weather state
 enum Weather { CLEAR, RAIN, STORM, FOG }
 var current_weather: int = Weather.CLEAR
@@ -37,8 +42,29 @@ func _init(p_world: GridWorld) -> void:
 	world = p_world
 
 
+func _ensure_sparse_initialized() -> void:
+	if _sparse_initialized:
+		return
+	_sparse_initialized = true
+	_vegetation_tiles.clear()
+	_erosion_tiles.clear()
+	for pos in world.tiles:
+		var tile: GridTile = world.tiles[pos]
+		if tile.terrain == GameConfig.Terrain.GRASS or tile.terrain == GameConfig.Terrain.FOREST:
+			_vegetation_tiles.append(pos)
+		# Check if adjacent to water for erosion
+		if tile.elevation > -0.3:
+			for offset: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var np: Vector2i = pos + offset
+				var neighbor: GridTile = world.tiles.get(np)
+				if neighbor and neighbor.terrain == GameConfig.Terrain.WATER:
+					_erosion_tiles.append(pos)
+					break
+
+
 func update(tick: int) -> void:
 	_weather_tick = tick
+	_ensure_sparse_initialized()
 
 	# Weather duration countdown
 	if _weather_duration > 0:
@@ -68,40 +94,35 @@ func _roll_weather() -> void:
 
 
 func _update_vegetation() -> void:
-	## Vegetation grows on grass/forest, faster during rain.
+	## Vegetation grows on grass/forest tiles (sparse set), faster during rain.
 	var rain_mult: float = 2.0 if current_weather == Weather.RAIN else 1.0
-	for pos in world.tiles:
+	for pos in _vegetation_tiles:
 		var tile: GridTile = world.tiles[pos]
-		if tile.terrain == GameConfig.Terrain.GRASS or tile.terrain == GameConfig.Terrain.FOREST:
-			tile.vegetation = minf(tile.vegetation + VEGETATION_GROWTH_RATE * rain_mult, VEGETATION_MAX)
-			# Dense vegetation converts grass to forest over very long time
-			if tile.terrain == GameConfig.Terrain.GRASS and tile.vegetation > 0.9:
-				tile.terrain = GameConfig.Terrain.FOREST
-				tile.vegetation = 0.5
-				tile.update_cached_values()
+		tile.vegetation = minf(tile.vegetation + VEGETATION_GROWTH_RATE * rain_mult, VEGETATION_MAX)
+		# Dense vegetation converts grass to forest over very long time
+		if tile.terrain == GameConfig.Terrain.GRASS and tile.vegetation > 0.9:
+			tile.terrain = GameConfig.Terrain.FOREST
+			tile.vegetation = 0.5
+			tile.update_cached_values()
 
 
 func _update_erosion() -> void:
-	## Tiles adjacent to water slowly lose elevation (erosion).
-	for pos in world.tiles:
+	## Only process tiles known to be adjacent to water (sparse set).
+	var expired: Array = []
+	for pos in _erosion_tiles:
 		var tile: GridTile = world.tiles[pos]
 		if tile.elevation <= -0.3:
-			continue  # Already low
-		# Check if adjacent to water
-		var near_water: bool = false
-		for offset: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var np: Vector2i = pos + offset
-			var neighbor: GridTile = world.tiles.get(np)
-			if neighbor and neighbor.terrain == GameConfig.Terrain.WATER:
-				near_water = true
-				break
-		if near_water:
-			tile.elevation -= EROSION_RATE
+			expired.append(pos)
+			continue
+		tile.elevation -= EROSION_RATE
+		tile.update_cached_values()
+		# Severe erosion can flood sand tiles
+		if tile.terrain == GameConfig.Terrain.SAND and tile.elevation < -0.25:
+			tile.terrain = GameConfig.Terrain.WATER
 			tile.update_cached_values()
-			# Severe erosion can flood sand tiles
-			if tile.terrain == GameConfig.Terrain.SAND and tile.elevation < -0.25:
-				tile.terrain = GameConfig.Terrain.WATER
-				tile.update_cached_values()
+			expired.append(pos)  # No longer erodible
+	for pos in expired:
+		_erosion_tiles.erase(pos)
 
 
 # --- Queries ---

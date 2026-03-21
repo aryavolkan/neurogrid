@@ -86,8 +86,7 @@ func _process(delta: float) -> void:
 	_fps_label.text = "FPS: %d" % Engine.get_frames_per_second()
 	_gen_label.text = "Gen: %d" % _sim.get_generation()
 
-	var species := _sim.get_species_counts()
-	_species_label.text = "Species: %d" % species.size()
+	_species_label.text = "Species: %d" % _sim.species_manager.get_species_count()
 
 	var status_parts: Array = []
 	if GameConfig.paused:

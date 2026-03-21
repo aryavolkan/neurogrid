@@ -8,7 +8,7 @@ var moves_blocked: int = 0
 var eats: int = 0
 var food_consumed: float = 0.0
 var corpse_consumed: float = 0.0
-var skills_fired: Dictionary = {}  # skill_name -> count
+var skills_fired: Array = [0, 0, 0, 0, 0, 0, 0, 0]  # Indexed by skill ID (8 skills)
 var bites_hit: int = 0
 var poisons_hit: int = 0
 var reproductions: int = 0
@@ -25,7 +25,7 @@ var spawns_random: int = 0  # Population maintenance spawns
 var gen_moves: int = 0
 var gen_eats: int = 0
 var gen_food_total: float = 0.0
-var gen_skills: Dictionary = {}
+var gen_skills: Array = [0, 0, 0, 0, 0, 0, 0, 0]  # Indexed by skill ID
 var gen_reproductions: int = 0
 var gen_births: int = 0
 var gen_deaths: int = 0
@@ -64,8 +64,8 @@ func end_tick() -> void:
 	gen_spawns_random += spawns_random
 	gen_bites += bites_hit
 	gen_poisons += poisons_hit
-	for skill_name in skills_fired:
-		gen_skills[skill_name] = gen_skills.get(skill_name, 0) + skills_fired[skill_name]
+	for i in 8:
+		gen_skills[i] += skills_fired[i]
 
 	total_births += births
 	total_deaths += deaths
@@ -77,7 +77,7 @@ func end_tick() -> void:
 	eats = 0
 	food_consumed = 0.0
 	corpse_consumed = 0.0
-	skills_fired.clear()
+	skills_fired = [0, 0, 0, 0, 0, 0, 0, 0]
 	bites_hit = 0
 	poisons_hit = 0
 	reproductions = 0
@@ -97,10 +97,12 @@ func get_gen_report() -> String:
 	lines.append("  Deaths: %d (energy: %d, health: %d, age: %d)" % [gen_deaths, gen_deaths_energy, gen_deaths_health, gen_deaths_age])
 	lines.append("  Births: %d (reproduced: %d, random spawn: %d)" % [gen_births, gen_reproductions, gen_spawns_random])
 	lines.append("  Bites landed: %d | Poisons hit: %d" % [gen_bites, gen_poisons])
-	if not gen_skills.is_empty():
-		var skill_parts: Array = []
-		for sname in gen_skills:
-			skill_parts.append("%s: %d" % [sname, gen_skills[sname]])
+	var skill_names: Array = ["dash", "bite", "poison_spit", "emit_pheromone", "share_food", "build_wall", "heal_self", "burrow"]
+	var skill_parts: Array = []
+	for i in 8:
+		if gen_skills[i] > 0:
+			skill_parts.append("%s: %d" % [skill_names[i], gen_skills[i]])
+	if not skill_parts.is_empty():
 		lines.append("  Skills: %s" % ", ".join(skill_parts))
 	else:
 		lines.append("  Skills: none fired")
@@ -111,7 +113,7 @@ func reset_generation() -> void:
 	gen_moves = 0
 	gen_eats = 0
 	gen_food_total = 0.0
-	gen_skills.clear()
+	gen_skills = [0, 0, 0, 0, 0, 0, 0, 0]
 	gen_reproductions = 0
 	gen_births = 0
 	gen_deaths = 0
@@ -142,8 +144,19 @@ func record_death(creature_id: int, body: CreatureBody, death_pos: Vector2i = Ve
 		longest_lived_id = creature_id
 
 
+func record_skill_by_id(skill_id: int) -> void:
+	## Record a skill activation by skill registry ID (faster than string key).
+	if skill_id >= 0 and skill_id < 8:
+		skills_fired[skill_id] += 1
+
+
 func record_skill(skill_name: String) -> void:
-	skills_fired[skill_name] = skills_fired.get(skill_name, 0) + 1
+	## Legacy string-based skill recording. Prefer record_skill_by_id().
+	# Map skill name to ID for backward compatibility
+	var skill_names: Array = ["dash", "bite", "poison_spit", "emit_pheromone", "share_food", "build_wall", "heal_self", "burrow"]
+	var idx: int = skill_names.find(skill_name)
+	if idx >= 0:
+		skills_fired[idx] += 1
 
 
 func get_lifetime_report() -> String:

@@ -35,6 +35,10 @@ var _cached_food_range: int = -1
 var _cached_enemy: Dictionary = {}
 var _cached_enemy_valid: bool = false
 var _cached_enemy_range: int = -1
+# Cached effective ranges per tick (avoids repeated tile + weather lookups)
+var _cached_eff_range_5: int = -1
+var _cached_eff_range_4: int = -1
+var _cached_eff_range_pos: Vector2i = Vector2i(-99, -99)
 
 
 func begin_sensing() -> void:
@@ -43,6 +47,9 @@ func begin_sensing() -> void:
 	_cached_food_range = -1
 	_cached_enemy_valid = false
 	_cached_enemy_range = -1
+	_cached_eff_range_5 = -1
+	_cached_eff_range_4 = -1
+	_cached_eff_range_pos = Vector2i(-99, -99)
 
 
 func get_receptor_value(registry_id: int, pos: Vector2i, body: CreatureBody, creature_id: int) -> float:
@@ -90,13 +97,28 @@ func get_receptor_value(registry_id: int, pos: Vector2i, body: CreatureBody, cre
 
 func _effective_range(base_range: int, pos: Vector2i) -> int:
 	## Apply elevation bonus and weather fog penalty to sensor range.
+	## Caches results per creature per tick (same pos, only two base_ranges used: 4 and 5).
+	if pos == _cached_eff_range_pos:
+		if base_range == 5 and _cached_eff_range_5 >= 0:
+			return _cached_eff_range_5
+		if base_range == 4 and _cached_eff_range_4 >= 0:
+			return _cached_eff_range_4
+
 	var effective: int = base_range
 	var tile: GridTile = world.get_tile(pos)
 	if tile:
 		effective += tile.sensor_bonus_range
 	if weather_system:
 		effective = int(float(effective) * weather_system.get_sensor_multiplier())
-	return maxi(effective, 1)
+	var result: int = maxi(effective, 1)
+
+	# Cache
+	_cached_eff_range_pos = pos
+	if base_range == 5:
+		_cached_eff_range_5 = result
+	elif base_range == 4:
+		_cached_eff_range_4 = result
+	return result
 
 
 func _get_cached_food(pos: Vector2i, max_range: int) -> Vector2i:

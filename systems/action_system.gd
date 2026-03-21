@@ -76,6 +76,8 @@ func _handle_movement(creature: Creature, move_x: float, move_y: float) -> void:
 		world.move_creature(creature.creature_id, creature.grid_pos, new_pos)
 		creature.grid_pos = new_pos
 		creature.body.energy -= GameConfig.MOVEMENT_COST * cost_mult
+		if ecology_system:
+			ecology_system.update_territory(creature)
 		if logger:
 			logger.moves += 1
 	elif new_pos != creature.grid_pos:
@@ -145,7 +147,7 @@ func _execute_skill(creature: Creature, skill_registry_id: int) -> void:
 	var cd_ticks: int = int(entry.cooldown * GameConfig.TICKS_PER_SECOND)
 	body.set_skill_cooldown(skill_registry_id, cd_ticks)
 	if logger:
-		logger.record_skill(entry.name)
+		logger.record_skill_by_id(skill_registry_id)
 
 	match skill_registry_id:
 		GameConfig.SKILL_DASH:
