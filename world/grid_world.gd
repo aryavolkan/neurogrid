@@ -200,11 +200,11 @@ func find_empty_adjacent(pos: Vector2i) -> Vector2i:
 
 # Pre-computed terrain colors (indexed by GameConfig.Terrain enum)
 const TERRAIN_COLORS: Array = [
-	Color(0.2, 0.5, 0.2),   # GRASS
-	Color(0.1, 0.35, 0.1),  # FOREST
-	Color(0.15, 0.3, 0.6),  # WATER
-	Color(0.4, 0.4, 0.4),   # ROCK
-	Color(0.7, 0.65, 0.4),  # SAND
+	Color(0.22, 0.52, 0.22),  # GRASS  — slightly brighter green
+	Color(0.12, 0.38, 0.12),  # FOREST — deep green
+	Color(0.18, 0.35, 0.62),  # WATER  — clear blue
+	Color(0.38, 0.36, 0.34),  # ROCK   — warm gray
+	Color(0.72, 0.66, 0.42),  # SAND   — warm tan
 ]
 const DEFAULT_TERRAIN_COLOR: Color = Color(0.3, 0.3, 0.3)
 
