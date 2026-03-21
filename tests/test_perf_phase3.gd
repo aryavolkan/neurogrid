@@ -269,18 +269,16 @@ func _test_body_cooldown_bounds_check() -> void:
 
 func _test_sim_manager_has_sub_methods() -> void:
 	# Verify the decomposed methods exist on SimulationManager
-	_assert_true(SimulationManager.method_list().any(
-		func(m): return m.name == "_update_metabolism"),
+	var sim := SimulationManager.new()
+	_assert_true(sim.has_method("_update_metabolism"),
 		"_update_metabolism method exists")
-	_assert_true(SimulationManager.method_list().any(
-		func(m): return m.name == "_sense_think_act"),
+	_assert_true(sim.has_method("_sense_think_act"),
 		"_sense_think_act method exists")
-	_assert_true(SimulationManager.method_list().any(
-		func(m): return m.name == "_handle_deaths"),
+	_assert_true(sim.has_method("_handle_deaths"),
 		"_handle_deaths method exists")
-	_assert_true(SimulationManager.method_list().any(
-		func(m): return m.name == "_update_world"),
+	_assert_true(sim.has_method("_update_world"),
 		"_update_world method exists")
+	sim.queue_free()
 
 
 # ============================================================
