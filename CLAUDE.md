@@ -116,6 +116,9 @@ Key classes used by NeuroGrid:
 - `BatchRunner` (Node): drives parameter sweep experiments — creates temporary `SimulationManager` instances, runs N ticks per combo × M repetitions, exports aggregated CSV. CLI: `--sweep NAME PARAM=val1,val2 --ticks N --runs M`.
 - `SimLogger` (RefCounted): per-tick and per-generation event counters (moves, eats, skills fired by name, bites, poisons, births, deaths by cause, random spawns). Lifetime stats (longest lived, most prolific parent).
 - `SaveSystem` (RefCounted): save/load full simulation state (world + genomes) to JSON. Export best genomes per species. Keys: F5 save, F9 load, F6 export. F7 exports CSV snapshots.
+- `ConfigPresetManager` (RefCounted): save/load named JSON presets (`user://presets/`) covering 6 sweepable `GameConfig` params and 4 `DynamicConfig` I/O rates. Four built-in presets: default, fast_evolution, rich_ecology, minimal. Not modifiable at runtime — presets take effect on next sim start.
+- `ReplayRecorder` (RefCounted): ring-buffer (3000 frames) of per-tick creature snapshots. `capture(sim)` builds a frame; `record(dict)` stores raw data. Used by `ReplayPanel`.
+- `WandbLogger` (RefCounted): in headless mode, writes `user://metrics.json` each generation (fitness, population, species, food, avg genome stats). `scripts/neurogrid_train.py` launches Godot and polls this file to log to W&B via `shared-evolve-utils`.
 
 ### Sweepable Parameters
 
@@ -129,6 +132,9 @@ Six `GameConfig` parameters are `static var` (not `const`) for batch sweep suppo
 - `StatsPanel` (CanvasLayer): toggle with Tab. Real-time line graphs for population, species count, and fitness history. Shows generation stats, food totals, famine indicator.
 - `PhylogenyPanel` (CanvasLayer): toggle with P. Species lineage tree visualization — DFS-ordered layout with lifespan bars, parent-child connectors, extinction markers, tick axis.
 - `SpeciesPanel` (CanvasLayer): toggle with S. Species list sorted by population, click to highlight all members on the grid and show representative genome's neural topology (nodes colored by type, weighted connections, labels).
+- `HelpPanel` (CanvasLayer): toggle with F1. Three tabs: Controls (all key bindings), Receptors & Skills (8 receptors, 8 skills with costs/cooldowns), Genome Guide (NEAT node types, fitness formula, speciation).
+- `PresetPanel` (CanvasLayer): toggle with F2. Browse/load/save/delete config presets via `ConfigPresetManager`.
+- `ReplayPanel` (CanvasLayer): toggle with R. Pauses sim, shows world-space creature overlay from recorded data, scrubber + play/pause/step controls.
 
 ### evolve-core Class Name Wrappers
 
@@ -167,4 +173,6 @@ Save/load via F5/F9, export best genomes F6, export CSV snapshots F7. Stats pane
 
 Batch experiments: `godot --path . --headless -- --sweep my_experiment BASE_METABOLISM=0.1,0.15,0.2 FOOD_REGEN_RATE=0.05,0.08 --ticks 5000 --runs 3` runs parameter sweeps and exports CSV results.
 
-See `ROADMAP.md` for remaining work (Phase 15: W&B integration, replay, polish).
+W&B training: `python scripts/neurogrid_train.py --ticks 5000 --project neurogrid` launches headless Godot and logs per-generation metrics to Weights & Biases.
+
+All 15 phases complete. See `ROADMAP.md`.

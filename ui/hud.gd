@@ -58,7 +58,7 @@ func _build_ui() -> void:
 	_fps_label = _add_label(vbox, "FPS: 0")
 	_gen_label = _add_label(vbox, "Gen: 0")
 	_fitness_label = _add_label(vbox, "Fitness: -")
-	_info_label = _add_label(vbox, "[Space] Pause  [/] Speed  [S] Species")
+	_info_label = _add_label(vbox, "[Space] Pause  [/] Speed  [F1] Help  [F2] Presets  [R] Replay")
 
 	add_child(panel)
 
