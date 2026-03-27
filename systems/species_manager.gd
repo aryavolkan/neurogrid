@@ -20,6 +20,7 @@ class SpeciesInfo:
 	var generations_without_improvement: int = 0
 	var total_fitness: float = 0.0
 	var age: int = 0
+	var grace_generations: int = 3  # Immune to extinction for first N generations
 
 	func _init(p_id: int, p_genome: DynamicGenome) -> void:
 		id = p_id
@@ -77,6 +78,7 @@ func update_fitness(creature_id: int, fitness: float) -> void:
 
 func end_generation() -> void:
 	## Called periodically to update stagnation tracking and prune empty species.
+	## Uses grace period to prevent flickering: new species survive at least 3 generations.
 	var to_remove: Array = []
 
 	for species_id in _species:
@@ -94,22 +96,24 @@ func end_generation() -> void:
 		info.best_fitness = 0.0
 		info.total_fitness = 0.0
 
-		# Update representative (random living member)
-		if info.member_ids.is_empty():
+		# Only remove species that are empty AND past grace period
+		if info.member_ids.is_empty() and info.age > info.grace_generations:
 			to_remove.append(species_id)
 
 	for species_id in to_remove:
 		speciation_events.append({"type": "extinct", "species_id": species_id})
 		_species.erase(species_id)
 
-	# Adjust compatibility threshold toward target
+	# Adjust compatibility threshold toward target (dampened to prevent oscillation)
 	var current_count := _species.size()
 	var target := _config.neat_config.target_species_count
+	var step: float = _config.neat_config.threshold_step * 0.25  # Dampened (was 0.5)
 	if current_count < target:
-		_config.neat_config.compatibility_threshold -= _config.neat_config.threshold_step * 0.5
+		_config.neat_config.compatibility_threshold -= step
 	elif current_count > target:
-		_config.neat_config.compatibility_threshold += _config.neat_config.threshold_step * 0.5
-	_config.neat_config.compatibility_threshold = maxf(_config.neat_config.compatibility_threshold, 0.3)
+		_config.neat_config.compatibility_threshold += step
+	_config.neat_config.compatibility_threshold = clampf(
+		_config.neat_config.compatibility_threshold, 0.5, 15.0)
 
 
 func is_stagnant(species_id: int) -> bool:

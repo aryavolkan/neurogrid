@@ -71,9 +71,9 @@ func _ready() -> void:
 func _test_terrain_color_lookup() -> void:
 	# Verify terrain color array matches terrain enum values
 	_assert_eq(GridWorld.TERRAIN_COLORS.size(), 5, "5 terrain colors defined")
-	_assert_eq(GridWorld.TERRAIN_COLORS[GameConfig.Terrain.GRASS], Color(0.2, 0.5, 0.2), "grass color correct")
-	_assert_eq(GridWorld.TERRAIN_COLORS[GameConfig.Terrain.WATER], Color(0.15, 0.3, 0.6), "water color correct")
-	_assert_eq(GridWorld.TERRAIN_COLORS[GameConfig.Terrain.SAND], Color(0.7, 0.65, 0.4), "sand color correct")
+	_assert_eq(GridWorld.TERRAIN_COLORS[GameConfig.Terrain.GRASS], Color(0.22, 0.52, 0.22), "grass color correct")
+	_assert_eq(GridWorld.TERRAIN_COLORS[GameConfig.Terrain.WATER], Color(0.18, 0.35, 0.62), "water color correct")
+	_assert_eq(GridWorld.TERRAIN_COLORS[GameConfig.Terrain.SAND], Color(0.72, 0.66, 0.42), "sand color correct")
 
 
 # ============================================================
