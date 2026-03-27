@@ -58,25 +58,7 @@ func _build_ui() -> void:
 	_fps_label = _add_label(vbox, "FPS: 0")
 	_gen_label = _add_label(vbox, "Gen: 0")
 	_fitness_label = _add_label(vbox, "Fitness: -")
-
-	# Separator
-	var sep := HSeparator.new()
-	sep.add_theme_constant_override("separation", 4)
-	vbox.add_child(sep)
-
-	# Controls help
-	var controls_label := _add_label(vbox, "")
-	controls_label.text = (
-		"[Space] Pause  [/] Speed\n"
-		+ "[Tab] Stats  [S] Species  [P] Phylogeny\n"
-		+ "[G] Genome  [H] Heatmap  [F3] Debug\n"
-		+ "Click creature to inspect"
-	)
-	controls_label.add_theme_font_size_override("font_size", 11)
-	controls_label.add_theme_color_override(
-		"font_color", Color(0.6, 0.6, 0.7))
-
-	_info_label = _add_label(vbox, "")
+	_info_label = _add_label(vbox, "[Space] Pause  [/] Speed  [S] Species")
 
 	add_child(panel)
 
@@ -114,7 +96,7 @@ func _process(delta: float) -> void:
 	if _sim.weather_system and _sim.weather_system.current_weather != WeatherSystem.Weather.CLEAR:
 		status_parts.append("[%s]" % _sim.weather_system.get_weather_name().to_upper())
 	var status_str: String = " ".join(status_parts)
-	_info_label.text = status_str
+	_info_label.text = "[Space] Pause  [/] Speed  " + status_str
 
 
 func _on_population_changed(count: int) -> void:
