@@ -91,9 +91,9 @@ Creatures spawn, sense, think (NEAT forward pass), act (move, eat, 8 skills), re
 
 ## Planned
 
-### Phase 15: Polish & Completeness
+### Phase 15: Polish & Completeness (done)
 
-- [ ] **W&B integration:** connect via `shared-evolve-utils` for cloud-based experiment tracking — log fitness curves, species counts, genome complexity, and population metrics
-- [ ] **Replay system:** record tick-by-tick snapshots of full simulation state, scrub timeline forward/backward, export to video for presentations and analysis
-- [ ] **In-game help:** tooltips, parameter descriptions, genome interpretation guide
-- [ ] **Config presets:** save/load GameConfig + DynamicConfig from named preset files
+- [x] **W&B integration:** `WandbLogger` writes `user://metrics.json` per generation; `scripts/neurogrid_train.py` launches headless Godot and logs to W&B via `shared-evolve-utils/godot_wandb.py`. Metrics: fitness, population, species count, food, avg genome complexity (nodes, connections, receptors, skills).
+- [x] **Replay system:** `ReplayRecorder` ring-buffer (3000 frames) captures creature snapshots each tick. `ReplayPanel` (R key) pauses simulation, shows world-space creature overlay from recorded data, provides scrubber + play/pause/step controls.
+- [x] **In-game help:** `HelpPanel` (F1 key) — three tabs: Controls (all key bindings), Receptors & Skills (descriptions, costs, cooldowns), Genome Guide (NEAT architecture, node types, fitness formula).
+- [x] **Config presets:** `ConfigPresetManager` saves/loads named JSON presets covering all 6 sweepable `GameConfig` params + 4 `DynamicConfig` I/O rates. Four built-in presets: default, fast_evolution, rich_ecology, minimal. `PresetPanel` (F2 key) provides load/save/delete UI.

@@ -11,6 +11,11 @@ var debug_overlay: DebugOverlay
 var heatmap_overlay: HeatmapOverlay
 var phylogeny_panel: PhylogenyPanel
 var species_panel: SpeciesPanel
+var help_panel: HelpPanel
+var preset_panel: PresetPanel
+var replay_recorder: ReplayRecorder
+var replay_panel: ReplayPanel
+var _wandb_logger: WandbLogger
 
 var _headless: bool = false
 var _headless_max_ticks: int = 5000
@@ -44,6 +49,9 @@ func _ready() -> void:
 		GameConfig.speed_multiplier = 16.0
 		sim.tick_complete.connect(_on_headless_tick)
 		sim.generation_complete.connect(_on_headless_generation)
+		# W&B logger: writes metrics.json each generation for Python poller
+		_wandb_logger = WandbLogger.new()
+		_wandb_logger.setup(sim)
 		print("\n=== NeuroGrid Headless Simulation ===")
 		print("Config: %dx%d grid | Pop %d-%d | Metabolism %.1f/tick | Start energy %.0f" % [
 			GameConfig.GRID_WIDTH, GameConfig.GRID_HEIGHT,
@@ -107,6 +115,22 @@ func _ready() -> void:
 	species_panel = SpeciesPanel.new()
 	species_panel.setup(sim)
 	add_child(species_panel)
+
+	# Help panel (F1 to toggle)
+	help_panel = HelpPanel.new()
+	add_child(help_panel)
+
+	# Config preset panel (F2 to toggle)
+	preset_panel = PresetPanel.new()
+	preset_panel.setup(sim)
+	add_child(preset_panel)
+
+	# Replay recorder + panel (R to toggle)
+	replay_recorder = ReplayRecorder.new()
+	sim.tick_complete.connect(func(_tick: int): replay_recorder.capture(sim))
+	replay_panel = ReplayPanel.new()
+	replay_panel.setup(sim, replay_recorder)
+	add_child(replay_panel)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -266,6 +290,8 @@ func _on_headless_tick(tick: int) -> void:
 
 	if tick >= _headless_max_ticks:
 		_print_full_summary()
+		if _wandb_logger:
+			_wandb_logger.mark_complete()
 		get_tree().quit()
 
 

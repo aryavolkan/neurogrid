@@ -15,6 +15,7 @@ var _test_scenes: Array = [
 	"res://tests/test_perf_optimizations.gd",
 	"res://tests/test_perf_phase2.gd",
 	"res://tests/test_perf_phase3.gd",
+	"res://tests/test_phase15.gd",
 ]
 var _current: int = 0
 var _loaded: Array = []
