@@ -20,6 +20,7 @@ func _ready() -> void:
 	_test_threshold_adjustment_down()
 	_test_empty_species_pruned()
 	_test_species_counts()
+	_test_representative_refreshed_on_end_generation()
 	_print_results("SpeciesManager")
 
 
@@ -154,6 +155,25 @@ func _test_species_counts() -> void:
 	for sid in counts:
 		total += counts[sid]
 	_assert_eq(total, 2, "species counts sum to creature count")
+
+
+func _test_representative_refreshed_on_end_generation() -> void:
+	var sm := SpeciesManager.new(_config)
+	var g1 := _make_genome()
+	var sid := sm.assign_species(1, g1)
+
+	# Add a second creature with a copy genome
+	var g2 := g1.copy()
+	sm.assign_species(2, g2)
+
+	# Remove creature 1, leaving only creature 2
+	sm.remove_creature(1)
+
+	# Provide genome lookup for representative refresh
+	sm.end_generation({2: g2})
+
+	var new_rep := sm.get_species_info(sid).representative_genome
+	_assert_true(new_rep == g2, "representative updated to living member genome")
 
 
 func _assert_eq(actual, expected, msg: String) -> void:

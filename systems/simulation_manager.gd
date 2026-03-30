@@ -337,7 +337,10 @@ func _end_generation() -> void:
 			phylogeny.update_species_stats(sid, species_before[sid], info.best_fitness_ever)
 
 	# Update species stagnation and compatibility threshold
-	species_manager.end_generation()
+	var genome_lookup: Dictionary = {}
+	for cid in creatures:
+		genome_lookup[cid] = creatures[cid].genome
+	species_manager.end_generation(genome_lookup)
 
 	# Record extinctions
 	for sid in species_before:

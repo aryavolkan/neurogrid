@@ -76,9 +76,10 @@ func update_fitness(creature_id: int, fitness: float) -> void:
 			_species[species_id].best_fitness = fitness
 
 
-func end_generation() -> void:
+func end_generation(genome_lookup: Dictionary = {}) -> void:
 	## Called periodically to update stagnation tracking and prune empty species.
 	## Uses grace period to prevent flickering: new species survive at least 3 generations.
+	## genome_lookup: optional {creature_id: DynamicGenome} used to refresh representatives.
 	var to_remove: Array = []
 
 	for species_id in _species:
@@ -95,6 +96,12 @@ func end_generation() -> void:
 		# Reset per-generation tracking
 		info.best_fitness = 0.0
 		info.total_fitness = 0.0
+
+		# Refresh representative to a random living member's genome
+		if not info.member_ids.is_empty() and not genome_lookup.is_empty():
+			var random_member_id: int = info.member_ids[randi() % info.member_ids.size()]
+			if genome_lookup.has(random_member_id):
+				info.representative_genome = genome_lookup[random_member_id]
 
 		# Only remove species that are empty AND past grace period
 		if info.member_ids.is_empty() and info.age > info.grace_generations:
