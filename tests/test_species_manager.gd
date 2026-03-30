@@ -139,8 +139,8 @@ func _test_empty_species_pruned() -> void:
 	var g := _make_genome()
 	sm.assign_species(1, g)
 	sm.remove_creature(1)
-	# Grace period: species survives 3 generations before extinction
-	for _i in 4:
+	# Grace period: species survives 1 generation before extinction
+	for _i in 2:
 		sm.end_generation()
 	_assert_eq(sm.get_species_count(), 0, "empty species removed")
 

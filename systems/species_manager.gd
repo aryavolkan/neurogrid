@@ -20,7 +20,7 @@ class SpeciesInfo:
 	var generations_without_improvement: int = 0
 	var total_fitness: float = 0.0
 	var age: int = 0
-	var grace_generations: int = 3  # Immune to extinction for first N generations
+	var grace_generations: int = 1  # Immune to extinction for first N generations
 
 	func _init(p_id: int, p_genome: DynamicGenome) -> void:
 		id = p_id
@@ -114,7 +114,7 @@ func end_generation(genome_lookup: Dictionary = {}) -> void:
 	# Adjust compatibility threshold toward target (dampened to prevent oscillation)
 	var current_count := _species.size()
 	var target := _config.neat_config.target_species_count
-	var step: float = _config.neat_config.threshold_step * 0.25  # Dampened (was 0.5)
+	var step: float = _config.neat_config.threshold_step * 0.5  # Dampened (was 0.25)
 	if current_count < target:
 		_config.neat_config.compatibility_threshold -= step
 	elif current_count > target:
