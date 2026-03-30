@@ -45,9 +45,9 @@ func apply_movement_cost() -> void:
 	energy -= GameConfig.MOVEMENT_COST
 
 
-func update_cooldowns(delta: float) -> void:
+func update_cooldowns(_delta: float) -> void:
 	if reproduction_cooldown > 0.0:
-		reproduction_cooldown -= delta
+		reproduction_cooldown -= 1.0
 
 	for i in 8:
 		if skill_cooldowns[i] > 0:

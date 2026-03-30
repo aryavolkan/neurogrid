@@ -142,10 +142,10 @@ func _test_update_cooldowns_burrow() -> void:
 
 func _test_reproduction_cooldown() -> void:
 	var body := CreatureBody.new()
-	body.reproduction_cooldown = 1.0
-	body.update_cooldowns(0.5)
-	_assert_eq(body.reproduction_cooldown, 0.5, "repro cooldown decrements")
-	body.update_cooldowns(0.5)
+	body.reproduction_cooldown = 2.0
+	body.update_cooldowns(0.0)
+	_assert_eq(body.reproduction_cooldown, 1.0, "repro cooldown decrements")
+	body.update_cooldowns(0.0)
 	_assert_eq(body.reproduction_cooldown, 0.0, "repro cooldown zero")
 
 
