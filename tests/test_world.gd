@@ -12,6 +12,7 @@ func _ready() -> void:
 	_test_food_index()
 	_test_spatial_queries()
 	_test_pheromone_decay()
+	_test_food_manager_total_before_update()
 	_print_results("World")
 
 
@@ -98,6 +99,18 @@ func _test_pheromone_decay() -> void:
 	_assert_true(tile.pheromone > 0.9, "pheromone deposited")
 	layer.update(0.0)
 	_assert_true(tile.pheromone < 1.0, "pheromone decayed")
+
+
+func _test_food_manager_total_before_update() -> void:
+	## get_total_food() must return correct total even before first update().
+	var w := GridWorld.new()
+	w.setup()
+	# Place food directly on a tile
+	var tile: GridTile = w.get_tile(Vector2i(5, 5))
+	tile.food = 10.0
+	var fm := FoodManager.new(w)
+	# Before any update() call, total should still reflect tile data
+	_assert_true(fm.get_total_food() >= 10.0, "get_total_food before update includes tile food")
 
 
 # --- Assert helpers ---

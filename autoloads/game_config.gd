@@ -22,11 +22,11 @@ static var BASE_METABOLISM: float = 0.15  # Per tick (was 0.5 — too harsh for 
 const MOVEMENT_COST: float = 0.1  # Per tile moved
 const REPRODUCTION_COST: float = 10.0
 static var REPRODUCTION_ENERGY_THRESHOLD: float = 35.0
-const OFFSPRING_ENERGY: float = 30.0
+const OFFSPRING_ENERGY: float = 40.0
 
 # Reproduction
 const MATE_DESIRE_THRESHOLD: float = 0.3
-const REPRODUCTION_COOLDOWN: float = 10.0  # Seconds
+const REPRODUCTION_COOLDOWN: float = 100.0  # Ticks (~3.3 seconds at 30 TPS)
 const MATING_COMPATIBILITY_THRESHOLD: float = 25.0  # Very loose — random genomes have dist ~10-18
 
 # Food

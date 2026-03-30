@@ -2,8 +2,8 @@ class_name ActionSystem
 extends RefCounted
 ## Interprets neural network outputs into creature actions: movement, eating, skills, mating.
 
-const EAT_DESIRE_THRESHOLD: float = 0.3
-const SKILL_ACTIVATION_THRESHOLD: float = 0.5
+const EAT_DESIRE_THRESHOLD: float = 0.0
+const SKILL_ACTIVATION_THRESHOLD: float = 0.3
 
 var world: GridWorld
 var pheromone_layer: PheromoneLayer

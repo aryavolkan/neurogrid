@@ -8,7 +8,7 @@ var neat_config: NeatConfig
 
 # Dynamic I/O rates
 var add_receptor_rate: float = 0.03
-var add_skill_rate: float = 0.02
+var add_skill_rate: float = 0.05
 var remove_receptor_rate: float = 0.005
 var remove_skill_rate: float = 0.005
 var max_receptors: int = 12

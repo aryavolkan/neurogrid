@@ -104,6 +104,7 @@ func get_season_phase() -> float:
 
 
 func get_total_food() -> float:
+	_ensure_initialized()
 	return _total_food
 
 

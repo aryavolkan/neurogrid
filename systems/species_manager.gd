@@ -20,7 +20,7 @@ class SpeciesInfo:
 	var generations_without_improvement: int = 0
 	var total_fitness: float = 0.0
 	var age: int = 0
-	var grace_generations: int = 3  # Immune to extinction for first N generations
+	var grace_generations: int = 1  # Immune to extinction for first N generations
 
 	func _init(p_id: int, p_genome: DynamicGenome) -> void:
 		id = p_id
@@ -76,9 +76,10 @@ func update_fitness(creature_id: int, fitness: float) -> void:
 			_species[species_id].best_fitness = fitness
 
 
-func end_generation() -> void:
+func end_generation(genome_lookup: Dictionary = {}) -> void:
 	## Called periodically to update stagnation tracking and prune empty species.
 	## Uses grace period to prevent flickering: new species survive at least 3 generations.
+	## genome_lookup: optional {creature_id: DynamicGenome} used to refresh representatives.
 	var to_remove: Array = []
 
 	for species_id in _species:
@@ -96,6 +97,12 @@ func end_generation() -> void:
 		info.best_fitness = 0.0
 		info.total_fitness = 0.0
 
+		# Refresh representative to a random living member's genome
+		if not info.member_ids.is_empty() and not genome_lookup.is_empty():
+			var random_member_id: int = info.member_ids[randi() % info.member_ids.size()]
+			if genome_lookup.has(random_member_id):
+				info.representative_genome = genome_lookup[random_member_id]
+
 		# Only remove species that are empty AND past grace period
 		if info.member_ids.is_empty() and info.age > info.grace_generations:
 			to_remove.append(species_id)
@@ -107,7 +114,7 @@ func end_generation() -> void:
 	# Adjust compatibility threshold toward target (dampened to prevent oscillation)
 	var current_count := _species.size()
 	var target := _config.neat_config.target_species_count
-	var step: float = _config.neat_config.threshold_step * 0.25  # Dampened (was 0.5)
+	var step: float = _config.neat_config.threshold_step * 0.5  # Dampened (was 0.25)
 	if current_count < target:
 		_config.neat_config.compatibility_threshold -= step
 	elif current_count > target:

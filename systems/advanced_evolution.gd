@@ -52,7 +52,7 @@ static func compute_mate_preference(chooser: DynamicGenome, candidate: DynamicGe
 # --- Ontogeny ---
 # Genome expression changes with age. Juveniles have restricted capabilities.
 
-const JUVENILE_AGE: int = 200  # Ticks before reaching adulthood
+const JUVENILE_AGE: int = 50  # Ticks before reaching adulthood
 const JUVENILE_METABOLISM_MULT: float = 0.6  # Lower metabolism as juvenile
 const JUVENILE_SKILL_BLOCK: bool = true  # Juveniles can't use skills
 
