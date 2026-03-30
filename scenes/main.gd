@@ -73,8 +73,8 @@ func _ready() -> void:
 
 	# Camera
 	camera = CameraController.new()
-	camera.make_current()
 	add_child(camera)
+	camera.make_current()
 
 	# HUD
 	hud = HUD.new()
